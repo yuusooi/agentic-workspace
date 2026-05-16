@@ -1,0 +1,232 @@
+/* =================================================================
+   LoginPage — Notion-inspired warm minimalism
+   ================================================================= */
+
+/* --- Page background & centering --- */
+.login-page {
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+/* --- Card --- */
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 36px;
+}
+
+/* --- Logo --- */
+.login-logo {
+  width: 44px;
+  height: 44px;
+  background: #0075de;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+/* --- Typography (Notion: serif headings, warm grays) --- */
+.login-title {
+  font-family: 'Noto Serif SC', Georgia, 'Times New Roman', serif;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  color: rgba(0, 0, 0, 0.95);
+}
+
+.login-subtitle {
+  font-size: 16px;
+  color: #615d59;
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+/* --- Tabs (Ant Design override for minimal look) --- */
+.login-tabs .ant-tabs-nav {
+  margin-bottom: 24px;
+}
+
+.login-tabs .ant-tabs-tab {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* --- Alert --- */
+.login-alert {
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+/* --- Form wrapper --- */
+.login-form-wrapper {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Input styling overrides (Notion: subtle, no heavy borders) --- */
+.login-form-wrapper .ant-input,
+.login-form-wrapper .ant-input-password .ant-input {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.login-form-wrapper .ant-input:hover,
+.login-form-wrapper .ant-input-password:hover .ant-input {
+  border-color: #097fe8 !important;
+}
+
+.login-form-wrapper .ant-input:focus,
+.login-form-wrapper .ant-input-focused,
+.login-form-wrapper .ant-input-password .ant-input:focus {
+  border-color: #097fe8 !important;
+  box-shadow: 0 0 0 2px rgba(9, 127, 232, 0.15) !important;
+}
+
+/* --- Labels --- */
+.login-form-wrapper .ant-form-item-label > label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.95);
+  height: auto;
+}
+
+/* --- Submit button --- */
+.login-submit-btn {
+  height: 44px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  margin-top: 4px;
+}
+
+.login-submit-btn:not(:disabled):hover {
+  background: #005bab !important;
+}
+
+/* --- Forgot password link --- */
+.login-forgot-link {
+  text-align: center;
+  font-size: 13px;
+  color: #0075de;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.login-forgot-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Back to login link --- */
+.login-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #615d59;
+  cursor: pointer;
+  margin-bottom: 16px;
+  transition: color 0.15s;
+}
+
+.login-back-link:hover {
+  color: rgba(0, 0, 0, 0.95);
+}
+
+/* --- Forgot password heading --- */
+.forgot-title {
+  font-family: 'Noto Serif SC', Georgia, 'Times New Roman', serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: rgba(0, 0, 0, 0.95);
+}
+
+.forgot-desc {
+  font-size: 13px;
+  color: #615d59;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* --- Verification code button (addonAfter) --- */
+.code-btn {
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0075de;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.code-btn:hover {
+  color: #005bab;
+}
+
+.code-btn-disabled {
+  color: #a39e98 !important;
+  cursor: not-allowed;
+}
+
+/* --- Lock overlay --- */
+.lock-overlay {
+  text-align: center;
+  padding: 32px 0;
+  animation: fadeIn 0.2s ease;
+}
+
+.lock-icon {
+  font-size: 32px;
+  color: #615d59;
+  margin-bottom: 12px;
+}
+
+.lock-title {
+  font-family: 'Noto Serif SC', Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: rgba(0, 0, 0, 0.95);
+}
+
+.lock-msg {
+  font-size: 14px;
+  color: #615d59;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.lock-countdown {
+  font-size: 28px;
+  font-weight: 700;
+  color: #dd5b00;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+
+.lock-hint {
+  font-size: 12px;
+  color: #a39e98;
+  margin-top: 4px;
+}
+
+/* --- Global minimal overrides for the login page context --- */
+.login-page .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.login-page .ant-input-prefix {
+  color: #a39e98;
+  margin-right: 8px;
+}

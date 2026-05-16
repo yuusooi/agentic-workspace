@@ -137,10 +137,10 @@ export default function RegisterForm() {
             size="large"
             addonAfter={
               <span
-                className={`code-btn ${countdown > 0 ? 'code-btn-disabled' : ''}`}
-                onClick={countdown > 0 ? undefined : handleSendCode}
+                className={`code-btn ${countdown > 0 || codeSending ? 'code-btn-disabled' : ''}`}
+                onClick={countdown > 0 || codeSending ? undefined : handleSendCode}
               >
-                {countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+                {codeSending ? '发送中...' : countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
               </span>
             }
           />

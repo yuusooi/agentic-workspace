@@ -1,0 +1,329 @@
+/* =================================================================
+   KanbanPage — Notion-inspired warm minimalism
+   ================================================================= */
+
+/* --- Toolbar --- */
+.kanban-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 32px 12px;
+}
+
+/* --- Board scroll container --- */
+.kanban {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  padding: 0 32px 20px;
+  overflow-x: auto;
+  min-height: 0;
+}
+
+.kanban::-webkit-scrollbar {
+  height: 5px;
+}
+.kanban::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+
+/* --- Column --- */
+.k-col {
+  min-width: 280px;
+  width: 280px;
+  background: #f6f5f4;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 180px);
+  transition: background 0.15s, outline 0.15s;
+}
+.k-col.drag-over {
+  background: rgba(0, 117, 222, 0.04);
+  outline: 2px dashed #0075de;
+  outline-offset: -2px;
+}
+
+/* --- Column Header --- */
+.k-col-h {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.k-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.k-col-t {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  color: rgba(0, 0, 0, 0.95);
+}
+.k-col-c {
+  font-size: 11px;
+  color: #a39e98;
+  background: #fff;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  font-variant-numeric: tabular-nums;
+}
+.k-col-menu-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a39e98;
+  font-size: 16px;
+  transition: all 0.1s;
+}
+.k-col-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.95);
+}
+
+/* --- Column Body --- */
+.k-col-b {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 40px;
+}
+.k-col-b::-webkit-scrollbar {
+  width: 4px;
+}
+.k-col-b::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+/* --- Task Card --- */
+.k-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  padding: 10px 12px;
+  cursor: grab;
+  transition: all 0.12s;
+  user-select: none;
+}
+.k-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.k-card.dragging {
+  opacity: 0.4;
+  transform: rotate(1deg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+.k-card-t {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.95);
+}
+.k-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+.k-card-ft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.k-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #a39e98;
+}
+.k-card-pri {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.k-card-dl {
+  font-size: 11px;
+  color: #a39e98;
+}
+.k-card-dl.od {
+  color: #dd5b00;
+  font-weight: 500;
+}
+
+/* --- Mini Avatar --- */
+.mini-av {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  border: 2px solid #fff;
+  margin-left: -5px;
+}
+.mini-av:first-child {
+  margin-left: 0;
+}
+
+/* --- Tags --- */
+.tag {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-weight: 500;
+  background: #f6f5f4;
+  color: #615d59;
+}
+.tag-blue {
+  background: #f2f9ff;
+  color: #0075de;
+}
+.tag-green {
+  background: rgba(26, 174, 57, 0.06);
+  color: #1aae39;
+}
+.tag-red {
+  background: rgba(221, 91, 0, 0.06);
+  color: #dd5b00;
+}
+.tag-purple {
+  background: rgba(0, 0, 0, 0.04);
+  color: #615d59;
+}
+.tag-teal {
+  background: #f6f5f4;
+  color: #615d59;
+}
+
+/* --- AI Badge --- */
+.tag-ai {
+  background: #f2f9ff;
+  color: #0075de;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* --- Drag Placeholder --- */
+.drag-placeholder {
+  border: 2px dashed #0075de;
+  background: rgba(0, 117, 222, 0.04);
+  border-radius: 4px;
+  min-height: 60px;
+  transition: height 0.15s;
+}
+
+/* --- Add Column Button --- */
+.k-add-col {
+  min-width: 280px;
+  width: 280px;
+  height: auto;
+  min-height: 60px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #a39e98;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.k-add-col:hover {
+  border-color: #0075de;
+  color: #0075de;
+  background: rgba(0, 117, 222, 0.02);
+}
+
+/* --- Empty State --- */
+.kanban-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 32px;
+  text-align: center;
+  color: #a39e98;
+  flex: 1;
+}
+.kanban-empty-title {
+  font-family: 'Noto Serif SC', Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.95);
+  margin-bottom: 8px;
+}
+.kanban-empty-desc {
+  font-size: 14px;
+  color: #615d59;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+/* --- Column drag handle --- */
+.k-col-handle {
+  cursor: grab;
+  color: #a39e98;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.k-col-h:hover .k-col-handle {
+  opacity: 1;
+}
+.k-col-handle:active {
+  cursor: grabbing;
+}
+
+/* --- Color swatches --- */
+.color-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.1s;
+}
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+.color-swatch.selected {
+  border-color: rgba(0, 0, 0, 0.95);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
+}

@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/taskboard?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      pool-name: TaskBoardHikariCP
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: -1ms
+
+logging:
+  level:
+    com.ai.taskboard: info
+    com.ai.taskboard.mapper: warn

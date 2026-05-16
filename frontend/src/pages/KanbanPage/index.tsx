@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Spin, Button } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Spin, Button, message } from 'antd';
+import { ArrowLeftOutlined, TeamOutlined } from '@ant-design/icons';
 import {
   DndContext,
   PointerSensor,
@@ -16,10 +16,15 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
 import { useKanbanStore } from '@/stores/kanban-store';
+import { useTaskStore } from '@/stores/task-store';
+import * as taskApi from '@/lib/task-api';
 import KanbanBoard from './KanbanBoard';
 import EmptyKanbanGuide from './EmptyKanbanGuide';
 import AddColumnModal from './AddColumnModal';
 import DeleteColumnModal from './DeleteColumnModal';
+import MemberDrawer from '@/components/member/MemberDrawer';
+import MemberTaskFilter from '@/components/member/MemberTaskFilter';
+import TaskDrawer from '@/components/task/TaskDrawer';
 import type { BoardColumn, Task } from '@/types/kanban';
 import './KanbanPage.css';
 
@@ -27,6 +32,7 @@ export default function KanbanPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const columns = useKanbanStore((s) => s.columns);
+  const myRole = useKanbanStore((s) => s.myRole);
   const loading = useKanbanStore((s) => s.loading);
   const loadBoard = useKanbanStore((s) => s.loadBoard);
   const moveTaskLocally = useKanbanStore((s) => s.moveTaskLocally);
@@ -39,6 +45,9 @@ export default function KanbanPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [deleteColumn, setDeleteColumn] = useState<BoardColumn | null>(null);
+  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
+  const [filteredMemberId, setFilteredMemberId] = useState<string | null>(null);
+  const [filteredMemberName, setFilteredMemberName] = useState<string | null>(null);
 
   useEffect(() => {
     if (projectId) loadBoard(projectId);
@@ -74,7 +83,6 @@ export default function KanbanPage() {
     const activeId = active.id as string;
     const sourceColumnId = activeData.sourceColumnId as string;
 
-    // Determine target column
     let targetColumnId: string | undefined;
     let targetIndex = 0;
 
@@ -106,7 +114,6 @@ export default function KanbanPage() {
     const activeData = active.data.current;
     const overData = over.data.current;
 
-    // Column reorder
     if (activeData.type === 'column' && overData?.type === 'column') {
       if (active.id !== over.id) {
         const oldIndex = columns.findIndex((c) => c.id === active.id);
@@ -118,12 +125,10 @@ export default function KanbanPage() {
       return;
     }
 
-    // Task operations
     if (activeData.type === 'task') {
       const taskId = active.id as string;
       const sourceColumnId = activeData.sourceColumnId as string;
 
-      // Determine target column
       let targetColumn: BoardColumn | undefined;
       if (overData?.type === 'column') {
         targetColumn = overData.column;
@@ -135,7 +140,6 @@ export default function KanbanPage() {
 
       if (!targetColumn) return;
 
-      // Same column reorder
       if (sourceColumnId === targetColumn.id) {
         const col = columns.find((c) => c.id === sourceColumnId);
         if (!col) return;
@@ -149,9 +153,37 @@ export default function KanbanPage() {
         return;
       }
 
-      // Cross-column move
       moveTaskToColumn(taskId, targetColumn.id, targetColumn.status_mapping);
     }
+  };
+
+  const handleMemberClick = (userId: string) => {
+    const allTasks = columns.flatMap((c) => c.tasks);
+    const member = allTasks
+      .flatMap((t) => t.assignees)
+      .find((a) => a.user_id === userId);
+    setFilteredMemberId(userId);
+    setFilteredMemberName(member?.name || null);
+    setMemberDrawerOpen(false);
+  };
+
+  const handleTaskClick = async (task: Task) => {
+    try {
+      const detail = await taskApi.getTaskDetail(task.id);
+      useTaskStore.getState().openDrawer('view', detail);
+    } catch {
+      message.error('加载任务详情失败');
+    }
+  };
+
+  const getFilteredColumns = () => {
+    if (!filteredMemberId) return columns;
+    return columns.map((col) => ({
+      ...col,
+      tasks: col.tasks.filter((t) =>
+        t.assignees.some((a) => a.user_id === filteredMemberId),
+      ),
+    }));
   };
 
   if (loading) {
@@ -161,6 +193,8 @@ export default function KanbanPage() {
       </div>
     );
   }
+
+  const displayColumns = getFilteredColumns();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -173,6 +207,23 @@ export default function KanbanPage() {
           返回
         </Button>
         <span style={{ fontWeight: 600, fontSize: 14 }}>看板</span>
+        <div style={{ flex: 1 }} />
+        <MemberTaskFilter
+          filteredUserId={filteredMemberId}
+          filteredUserName={filteredMemberName}
+          onClear={() => {
+            setFilteredMemberId(null);
+            setFilteredMemberName(null);
+          }}
+        />
+        <Button
+          type="text"
+          icon={<TeamOutlined />}
+          onClick={() => setMemberDrawerOpen(true)}
+          style={{ color: '#615d59' }}
+        >
+          成员
+        </Button>
       </div>
 
       {columns.length === 0 ? (
@@ -186,9 +237,10 @@ export default function KanbanPage() {
           onDragEnd={handleDragEnd}
         >
           <KanbanBoard
-            columns={columns}
+            columns={displayColumns}
             onDeleteColumn={setDeleteColumn}
             onAddColumn={() => setAddModalOpen(true)}
+            onTaskClick={handleTaskClick}
           />
           <DragOverlay>
             {activeTask && (
@@ -213,6 +265,16 @@ export default function KanbanPage() {
         column={deleteColumn}
         onClose={() => setDeleteColumn(null)}
       />
+      {projectId && (
+        <MemberDrawer
+          open={memberDrawerOpen}
+          onClose={() => setMemberDrawerOpen(false)}
+          projectId={projectId}
+          myRole={myRole}
+          onMemberClick={handleMemberClick}
+        />
+      )}
+      <TaskDrawer />
     </div>
   );
 }

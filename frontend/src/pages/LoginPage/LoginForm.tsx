@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Alert } from 'antd';
 import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth-store';
@@ -19,6 +20,7 @@ const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 export default function LoginForm({ onForgotPassword, onLock }: LoginFormProps) {
   const [form] = Form.useForm<LoginFormValues>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<'error' | 'warning'>('error');
@@ -33,6 +35,7 @@ export default function LoginForm({ onForgotPassword, onLock }: LoginFormProps) 
     try {
       const res = await apiClient.post('/auth/login', values);
       setAuth(res.data.user, res.data.access_token, res.data.refresh_token);
+      navigate('/projects', { replace: true });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;

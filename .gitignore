@@ -2,6 +2,10 @@ node_modules/
 dist/
 .env
 *.log
+<<<<<<< HEAD
 .DS_Store
+=======
+.DS_Store 
+>>>>>>> 24df3653ddf51d7111282a43ba5ab62e5b9117b5
 prd/
 nul

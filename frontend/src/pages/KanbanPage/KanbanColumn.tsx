@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import type { BoardColumn } from '@/types/kanban';
+import type { BoardColumn, Task } from '@/types/kanban';
 import TaskCard from './TaskCard';
 import KanbanColumnHeader from './KanbanColumnHeader';
 
@@ -10,9 +10,10 @@ interface KanbanColumnProps {
   column: BoardColumn;
   tagIndex: number;
   onDeleteColumn: (column: BoardColumn) => void;
+  onTaskClick?: (task: Task) => void;
 }
 
-export default function KanbanColumn({ column, tagIndex, onDeleteColumn }: KanbanColumnProps) {
+export default function KanbanColumn({ column, tagIndex, onDeleteColumn, onTaskClick }: KanbanColumnProps) {
   const {
     attributes,
     listeners,
@@ -53,7 +54,7 @@ export default function KanbanColumn({ column, tagIndex, onDeleteColumn }: Kanba
       <div ref={setDroppableRef} className="k-col-b">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} tagIndex={tagIndex} />
+            <TaskCard key={task.id} task={task} tagIndex={tagIndex} onClick={onTaskClick} />
           ))}
         </SortableContext>
         {column.tasks.length === 0 && (

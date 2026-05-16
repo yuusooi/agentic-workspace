@@ -16,9 +16,10 @@ const AVATAR_COLORS = ['#31302e', '#0075de', '#615d59', '#1aae39', '#a39e98'];
 interface TaskCardProps {
   task: Task;
   tagIndex: number;
+  onClick?: (task: Task) => void;
 }
 
-export default function TaskCard({ task, tagIndex }: TaskCardProps) {
+export default function TaskCard({ task, tagIndex, onClick }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -60,6 +61,12 @@ export default function TaskCard({ task, tagIndex }: TaskCardProps) {
       className={`k-card ${isDragging ? 'dragging' : ''}`}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        if (!isDragging && onClick) {
+          e.stopPropagation();
+          onClick(task);
+        }
+      }}
     >
       <div className="k-card-t">{task.title}</div>
       {task.tags.length > 0 && (

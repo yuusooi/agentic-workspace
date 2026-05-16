@@ -24,6 +24,7 @@ export interface TaskAttachment {
   file_type: string;
   file_size: number;
   created_at: string;
+  uploaded_by: string;
 }
 
 export interface TaskComment {
@@ -260,6 +261,14 @@ export async function createProjectTag(
 ): Promise<Tag> {
   const res = await apiClient.post(`/projects/${projectId}/tags`, payload);
   return res.data;
+}
+
+/** DELETE /api/tags/:id — 删除标签 */
+export async function deleteProjectTag(
+  _projectId: string,
+  tagId: string,
+): Promise<void> {
+  await apiClient.delete(`/tags/${tagId}`);
 }
 
 // ── Priority helpers ───────────────────────────────────

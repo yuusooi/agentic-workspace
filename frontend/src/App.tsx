@@ -6,6 +6,16 @@ import ProjectListPage from './pages/ProjectListPage';
 import PublicProjectsPage from './pages/PublicProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import KanbanPage from './pages/KanbanPage';
+import UserSettingsPage from './pages/UserSettingsPage';
+import ForbiddenPage from './pages/ForbiddenPage';
+import AdminUserListPage from './pages/admin/AdminUserListPage';
+import AdminProjectListPage from './pages/admin/AdminProjectListPage';
+import AdminGuard from './components/auth/AdminGuard';
+import AIChatHistory from './pages/ai/AIChatHistory';
+import AIOperationLogs from './pages/ai/AIOperationLogs';
+import AutomationPage from './pages/project/AutomationPage';
+import KnowledgeBasePage from './pages/project/KnowledgeBasePage';
+import TemplateListPage from './pages/project/TemplateListPage';
 
 function App() {
   return (
@@ -22,6 +32,15 @@ function App() {
         <Route path="/projects/public" element={<PublicProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/kanban" element={<KanbanPage />} />
+        <Route path="/projects/:id/automation" element={<AutomationPage />} />
+        <Route path="/projects/:id/knowledge" element={<KnowledgeBasePage />} />
+        <Route path="/templates" element={<TemplateListPage />} />
+        <Route path="/settings" element={<UserSettingsPage />} />
+        <Route path="/403" element={<ForbiddenPage />} />
+        <Route path="/admin/users" element={<AdminGuard><AdminUserListPage /></AdminGuard>} />
+        <Route path="/admin/projects" element={<AdminGuard><AdminProjectListPage /></AdminGuard>} />
+        <Route path="/ai/history" element={<AIChatHistory />} />
+        <Route path="/ai/logs" element={<AIOperationLogs />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />
     </Routes>

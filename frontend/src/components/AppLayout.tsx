@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Avatar, Button, Tooltip } from 'antd';
 import {
@@ -6,8 +6,11 @@ import {
   GlobalOutlined,
   LogoutOutlined,
   SettingOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth-store';
+import NotificationBell from '@/components/notification/NotificationBell';
+import AICommandPanel from '@/components/ai/AICommandPanel';
 
 const navItems = [
   { path: '/projects', label: '我的项目', icon: <AppstoreOutlined /> },
@@ -20,6 +23,18 @@ export default function AppLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setAiPanelOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const isActive = (path: string) => {
     if (path === '/projects') return location.pathname === '/projects';
@@ -107,6 +122,65 @@ export default function AppLayout() {
           ))}
         </div>
 
+        {user?.role === 'ADMIN' && (
+          <div style={{ padding: '0 8px' }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#a39e98',
+              padding: '8px 8px 4px',
+              textTransform: 'uppercase',
+              letterSpacing: 0.3,
+            }}>
+              系统管理
+            </div>
+            <div
+              onClick={() => navigate('/admin/users')}
+              onMouseEnter={() => setHoveredNav('/admin/users')}
+              onMouseLeave={() => setHoveredNav(null)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 8px',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: 14,
+                color: isActive('/admin') ? '#0075de' : (hoveredNav === '/admin/users' ? 'rgba(0,0,0,.95)' : '#615d59'),
+                background: isActive('/admin') ? 'rgba(0,117,222,.08)' : 'transparent',
+                transition: 'all .1s',
+              }}
+            >
+              <span style={{ fontSize: 16, opacity: isActive('/admin') ? 1 : 0.7 }}>
+                <SafetyCertificateOutlined />
+              </span>
+              用户管理
+            </div>
+            <div
+              onClick={() => navigate('/admin/projects')}
+              onMouseEnter={() => setHoveredNav('/admin/projects')}
+              onMouseLeave={() => setHoveredNav(null)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 8px',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: 14,
+                color: isActive('/admin/projects') ? '#0075de' : (hoveredNav === '/admin/projects' ? 'rgba(0,0,0,.95)' : '#615d59'),
+                background: isActive('/admin/projects') ? 'rgba(0,117,222,.08)' : 'transparent',
+                transition: 'all .1s',
+              }}
+            >
+              <span style={{ fontSize: 16, opacity: isActive('/admin/projects') ? 1 : 0.7 }}>
+                <AppstoreOutlined />
+              </span>
+              全部项目
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div style={{
           marginTop: 'auto',
@@ -141,9 +215,11 @@ export default function AppLayout() {
                 type="text"
                 size="small"
                 icon={<SettingOutlined />}
+                onClick={() => navigate('/settings')}
                 style={{ color: '#615d59', border: 'none', background: 'transparent' }}
               />
             </Tooltip>
+            <NotificationBell />
             <Tooltip title="退出登录">
               <Button
                 type="text"
@@ -167,6 +243,7 @@ export default function AppLayout() {
       }}>
         <Outlet />
       </div>
+      <AICommandPanel open={aiPanelOpen} onClose={() => setAiPanelOpen(false)} />
     </div>
   );
 }

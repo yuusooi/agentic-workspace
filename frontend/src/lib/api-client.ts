@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { message } from 'antd';
 import { useAuthStore } from '@/stores/auth-store';
 
 const apiClient = axios.create({
@@ -28,6 +29,11 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    if (error.response?.status === 403) {
+      message.error('权限不足，无法执行此操作');
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // Only attempt refresh on 401 and not already retried

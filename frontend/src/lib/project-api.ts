@@ -1,15 +1,15 @@
-import apiClient from './api-client';
-import type { ProjectInfo } from '@/stores/project-store';
+import apiClient from "./api-client";
+import type { ProjectInfo } from "@/stores/project-store";
 
 export interface ProjectListItem {
   id: string;
   name: string;
   description: string;
   icon: string;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: "PUBLIC" | "PRIVATE";
   created_by: string;
   created_at: string;
-  my_role: 'PROJECT_OWNER' | 'PROJECT_MEMBER';
+  my_role: "PROJECT_OWNER" | "PROJECT_MEMBER";
   owner: {
     id: string;
     name: string;
@@ -21,24 +21,26 @@ export interface CreateProjectPayload {
   name: string;
   description?: string;
   icon?: string;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: "PUBLIC" | "PRIVATE";
 }
 
 /** GET /api/projects — 项目列表（当前用户参与的） */
 export async function getMyProjects(): Promise<ProjectListItem[]> {
-  const res = await apiClient.get('/projects');
+  const res = await apiClient.get("/projects");
   return res.data;
 }
 
 /** GET /api/projects/public — 公开项目列表 */
 export async function getPublicProjects(): Promise<ProjectListItem[]> {
-  const res = await apiClient.get('/projects/public');
+  const res = await apiClient.get("/projects/public");
   return res.data;
 }
 
 /** POST /api/projects — 创建项目 */
-export async function createProject(payload: CreateProjectPayload): Promise<ProjectInfo> {
-  const res = await apiClient.post('/projects', payload);
+export async function createProject(
+  payload: CreateProjectPayload,
+): Promise<ProjectInfo> {
+  const res = await apiClient.post("/projects", payload);
   return res.data;
 }
 
@@ -48,12 +50,26 @@ export async function getProjectDetail(id: string): Promise<ProjectInfo> {
   return res.data;
 }
 
+/** PUT /api/projects/:id — 更新项目 */
+export async function updateProject(
+  id: string,
+  payload: { name?: string; description?: string; visibility?: 'PUBLIC' | 'PRIVATE' },
+): Promise<ProjectInfo> {
+  const res = await apiClient.put(`/projects/${id}`, payload);
+  return res.data;
+}
+
+/** DELETE /api/projects/:id — 删除项目 */
+export async function deleteProject(id: string): Promise<void> {
+  await apiClient.delete(`/projects/${id}`);
+}
+
 // ── Members API ──────────────────────────────────────────
 
 export interface ProjectMember {
   id: string;
   user_id: string;
-  role: 'PROJECT_OWNER' | 'PROJECT_MEMBER';
+  role: "PROJECT_OWNER" | "PROJECT_MEMBER";
   user: {
     id: string;
     username: string;
@@ -64,7 +80,9 @@ export interface ProjectMember {
 }
 
 /** GET /api/projects/:id/members — 项目成员列表 */
-export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+export async function getProjectMembers(
+  projectId: string,
+): Promise<ProjectMember[]> {
   const res = await apiClient.get(`/projects/${projectId}/members`);
   return res.data;
 }
@@ -73,9 +91,43 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
 export async function searchProjectMembers(
   projectId: string,
   query: string,
-): Promise<Array<{ id: string; username: string; name: string; email: string; avatar: string | null }>> {
+): Promise<
+  Array<{
+    id: string;
+    username: string;
+    name: string;
+    email: string;
+    avatar: string | null;
+  }>
+> {
   const res = await apiClient.get(`/projects/${projectId}/members/search`, {
     params: { q: query },
   });
   return res.data;
+}
+
+/** POST /api/projects/:id/members — 邀请成员 */
+export async function inviteProjectMember(
+  projectId: string,
+  username: string,
+): Promise<ProjectMember> {
+  const res = await apiClient.post(`/projects/${projectId}/members`, { username });
+  return res.data;
+}
+
+/** PUT /api/projects/:id/members/:memberId/role — 修改成员角色 */
+export async function updateMemberRole(
+  projectId: string,
+  memberId: string,
+  role: 'PROJECT_OWNER' | 'PROJECT_MEMBER',
+): Promise<void> {
+  await apiClient.put(`/projects/${projectId}/members/${memberId}/role`, { role });
+}
+
+/** DELETE /api/projects/:id/members/:memberId — 移除成员 */
+export async function removeProjectMember(
+  projectId: string,
+  memberId: string,
+): Promise<void> {
+  await apiClient.delete(`/projects/${projectId}/members/${memberId}`);
 }

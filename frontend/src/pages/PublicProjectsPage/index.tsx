@@ -16,7 +16,7 @@ export default function PublicProjectsPage() {
     try {
       setLoading(true);
       const data = await getPublicProjects();
-      setProjects(data);
+      setProjects(data.content || []);
     } catch {
       message.error('加载公开项目失败');
     } finally {
@@ -193,9 +193,9 @@ function PublicProjectCard({
         fontSize: 12,
         color: '#a39e98',
       }}>
-        <span>创建者: {project.owner?.name || '未知'}</span>
-        {project.my_role && (
-          <span>{project.my_role === 'PROJECT_OWNER' ? '负责人' : '成员'}</span>
+        <span>创建者: {project.ownerName || '未知'}</span>
+        {project.myRole && (
+          <span>{project.myRole === 'PROJECT_OWNER' ? '负责人' : '成员'}</span>
         )}
       </div>
     </div>

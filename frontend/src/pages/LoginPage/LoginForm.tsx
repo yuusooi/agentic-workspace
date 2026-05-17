@@ -16,7 +16,7 @@ interface LoginFormProps {
 }
 
 const MAX_ATTEMPTS = 5;
-const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const LOCK_DURATION_MS = 15 * 60 * 1000;
 
 export default function LoginForm({ onForgotPassword, onLock }: LoginFormProps) {
   const [form] = Form.useForm<LoginFormValues>();
@@ -34,14 +34,38 @@ export default function LoginForm({ onForgotPassword, onLock }: LoginFormProps) 
 
     try {
       const res = await apiClient.post('/auth/login', values);
-      setAuth(res.data.user, res.data.access_token, res.data.refresh_token);
+      const data = res.data;
+      const userInfo = data.userInfo;
+      setAuth(
+        {
+          id: String(userInfo.id),
+          username: userInfo.username,
+          nickname: userInfo.nickname,
+          email: userInfo.email,
+          role: userInfo.role,
+          canCreateProject: userInfo.canCreateProject === 1,
+          avatar: userInfo.avatar,
+        },
+        data.accessToken,
+        data.refreshToken,
+      );
       navigate('/projects', { replace: true });
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const errData = (err as { response?: { data?: { code?: number; message?: string; data?: any } } })?.response?.data;
+      const errCode = errData?.code;
+      const errMessage = errData?.message;
 
-      if (status === 423) {
-        onLock(LOCK_DURATION_MS);
+      if (errCode === 4001) {
+        const lockData = errData?.data;
+        if (lockData?.remaining_seconds) {
+          onLock(lockData.remaining_seconds * 1000);
+          return;
+        }
+      }
+
+      if (errCode === 4031) {
+        setError('账户已被禁用，请联系管理员');
+        setErrorType('error');
         return;
       }
 
@@ -53,11 +77,17 @@ export default function LoginForm({ onForgotPassword, onLock }: LoginFormProps) 
         return;
       }
 
-      if (newAttempts === MAX_ATTEMPTS - 1) {
-        setError('还有 1 次尝试机会，失败后账户将被锁定 15 分钟');
-        setErrorType('warning');
+      if (errCode === 4010 && errData?.data?.remaining_attempts !== undefined) {
+        const remaining = errData.data.remaining_attempts;
+        if (remaining <= 1) {
+          setError('还有 1 次尝试机会，失败后账户将被锁定 15 分钟');
+          setErrorType('warning');
+        } else {
+          setError(errMessage || '邮箱或密码错误');
+          setErrorType('error');
+        }
       } else {
-        setError(message || '邮箱或密码错误');
+        setError(errMessage || '邮箱或密码错误');
         setErrorType('error');
       }
     } finally {
@@ -69,7 +99,7 @@ export default function LoginForm({ onForgotPassword, onLock }: LoginFormProps) 
     <div className="login-form-wrapper">
       {error && (
         <Alert
-          message={error}
+          title={error}
           type={errorType}
           showIcon
           className="login-alert"

@@ -2,34 +2,28 @@ import apiClient from './api-client';
 
 export type NotificationType =
   | 'DEADLINE_REMINDER'
-  | 'OVERDUE'
-  | 'STATUS_CHANGE'
+  | 'OVERDUE_WARNING'
+  | 'STATUS_CHANGED'
   | 'MENTION'
-  | 'MEMBER_CHANGE'
-  | 'AI_OPERATION';
+  | 'ASSIGNEE_CHANGED'
+  | 'AI_OPERATION'
+  | 'HEALTH_WARNING';
 
 export interface Notification {
   id: string;
   type: NotificationType;
   title: string;
   content: string;
-  is_read: boolean;
-  entity_type: 'TASK' | 'PROJECT' | null;
-  entity_id: string | null;
-  created_at: string;
-  actor: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  } | null;
+  isRead: number;
+  relatedType: 'TASK' | 'PROJECT' | null;
+  relatedId: string | null;
+  createdAt: string;
 }
 
 export interface NotificationListResponse {
   content: Notification[];
   totalElements: number;
   totalPages: number;
-  number: number;
-  size: number;
 }
 
 export async function getNotifications(
@@ -39,7 +33,7 @@ export async function getNotifications(
   return res.data;
 }
 
-export async function getUnreadCount(): Promise<{ count: number }> {
+export async function getUnreadCount(): Promise<number> {
   const res = await apiClient.get('/notifications/unread-count');
   return res.data;
 }

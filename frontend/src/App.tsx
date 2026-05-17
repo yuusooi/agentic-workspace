@@ -11,8 +11,7 @@ import ForbiddenPage from './pages/ForbiddenPage';
 import AdminUserListPage from './pages/admin/AdminUserListPage';
 import AdminProjectListPage from './pages/admin/AdminProjectListPage';
 import AdminGuard from './components/auth/AdminGuard';
-import AIChatHistory from './pages/ai/AIChatHistory';
-import AIOperationLogs from './pages/ai/AIOperationLogs';
+import AIPage from './pages/ai/AIPage';
 import AutomationPage from './pages/project/AutomationPage';
 import KnowledgeBasePage from './pages/project/KnowledgeBasePage';
 import TemplateListPage from './pages/project/TemplateListPage';
@@ -35,12 +34,13 @@ function App() {
         <Route path="/projects/:id/automation" element={<AutomationPage />} />
         <Route path="/projects/:id/knowledge" element={<KnowledgeBasePage />} />
         <Route path="/templates" element={<TemplateListPage />} />
+        <Route path="/ai" element={<AIPage />} />
+        <Route path="/ai/history" element={<AIPage />} />
+        <Route path="/ai/logs" element={<AIPage />} />
         <Route path="/settings" element={<UserSettingsPage />} />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/admin/users" element={<AdminGuard><AdminUserListPage /></AdminGuard>} />
         <Route path="/admin/projects" element={<AdminGuard><AdminProjectListPage /></AdminGuard>} />
-        <Route path="/ai/history" element={<AIChatHistory />} />
-        <Route path="/ai/logs" element={<AIOperationLogs />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />
     </Routes>

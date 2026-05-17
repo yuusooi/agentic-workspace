@@ -3,6 +3,7 @@ package com.ai.taskboard.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ai.taskboard.common.result.Result;
 import com.ai.taskboard.common.result.ResultCode;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,12 +38,20 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/projects/public").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/projects/public").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/projects/*/board").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/projects/*/rules").authenticated()
+                .requestMatchers("/api/rules/**").authenticated()
+                .requestMatchers("/api/projects/*/knowledge-bases").authenticated()
+                .requestMatchers("/api/projects/*/knowledge-bases/*").authenticated()
+                .requestMatchers("/api/knowledge-bases/**").authenticated()
+                .requestMatchers("/api/documents/**").authenticated()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

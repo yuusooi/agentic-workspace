@@ -1,42 +1,61 @@
 import apiClient from "./api-client";
 import type { ProjectInfo } from "@/stores/project-store";
 
+function mapRole(role: string | null | undefined): "PROJECT_OWNER" | "PROJECT_MEMBER" | null {
+  if (role === 'OWNER') return 'PROJECT_OWNER';
+  if (role === 'MEMBER') return 'PROJECT_MEMBER';
+  return null;
+}
+
+function mapProjectRoles<T extends { myRole?: string | null }>(data: T): T & { myRole: "PROJECT_OWNER" | "PROJECT_MEMBER" | null } {
+  return { ...data, myRole: mapRole(data.myRole) };
+}
+
+function mapMemberRoles<T extends { role?: string | null }>(data: T): T & { role: "PROJECT_OWNER" | "PROJECT_MEMBER" } {
+  return { ...data, role: mapRole(data.role) as "PROJECT_OWNER" | "PROJECT_MEMBER" };
+}
+
 export interface ProjectListItem {
   id: string;
   name: string;
   description: string;
-  icon: string;
   visibility: "PUBLIC" | "PRIVATE";
-  created_by: string;
-  created_at: string;
-  my_role: "PROJECT_OWNER" | "PROJECT_MEMBER";
-  owner: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  };
+  ownerId: string;
+  ownerName: string;
+  myRole: "PROJECT_OWNER" | "PROJECT_MEMBER" | null;
+  createdAt: string;
+}
+
+export interface ProjectListResponse {
+  content: ProjectListItem[];
+  totalElements: number;
+  totalPages: number;
 }
 
 export interface CreateProjectPayload {
   name: string;
   description?: string;
-  icon?: string;
   visibility: "PUBLIC" | "PRIVATE";
 }
 
-/** GET /api/projects — 项目列表（当前用户参与的） */
-export async function getMyProjects(): Promise<ProjectListItem[]> {
-  const res = await apiClient.get("/projects");
-  return res.data;
+export async function getMyProjects(params?: {
+  page?: number;
+  size?: number;
+}): Promise<ProjectListResponse> {
+  const res = await apiClient.get("/projects/mine", { params });
+  const data = res.data as ProjectListResponse;
+  return { ...data, content: (data.content || []).map(mapProjectRoles) };
 }
 
-/** GET /api/projects/public — 公开项目列表 */
-export async function getPublicProjects(): Promise<ProjectListItem[]> {
-  const res = await apiClient.get("/projects/public");
-  return res.data;
+export async function getPublicProjects(params?: {
+  page?: number;
+  size?: number;
+}): Promise<ProjectListResponse> {
+  const res = await apiClient.get("/projects/public", { params });
+  const data = res.data as ProjectListResponse;
+  return { ...data, content: (data.content || []).map(mapProjectRoles) };
 }
 
-/** POST /api/projects — 创建项目 */
 export async function createProject(
   payload: CreateProjectPayload,
 ): Promise<ProjectInfo> {
@@ -44,13 +63,11 @@ export async function createProject(
   return res.data;
 }
 
-/** GET /api/projects/:id — 项目详情 */
 export async function getProjectDetail(id: string): Promise<ProjectInfo> {
   const res = await apiClient.get(`/projects/${id}`);
-  return res.data;
+  return mapProjectRoles(res.data);
 }
 
-/** PUT /api/projects/:id — 更新项目 */
 export async function updateProject(
   id: string,
   payload: { name?: string; description?: string; visibility?: 'PUBLIC' | 'PRIVATE' },
@@ -59,75 +76,67 @@ export async function updateProject(
   return res.data;
 }
 
-/** DELETE /api/projects/:id — 删除项目 */
 export async function deleteProject(id: string): Promise<void> {
   await apiClient.delete(`/projects/${id}`);
 }
 
-// ── Members API ──────────────────────────────────────────
-
 export interface ProjectMember {
   id: string;
-  user_id: string;
+  userId: string;
+  username: string;
+  email: string;
+  nickname: string;
+  avatar: string | null;
   role: "PROJECT_OWNER" | "PROJECT_MEMBER";
-  user: {
-    id: string;
-    username: string;
-    name: string;
-    email: string;
-    avatar: string | null;
-  };
+  joinedAt: string;
 }
 
-/** GET /api/projects/:id/members — 项目成员列表 */
+export interface ProjectMemberListResponse {
+  content: ProjectMember[];
+  totalElements: number;
+  totalPages: number;
+}
+
 export async function getProjectMembers(
   projectId: string,
-): Promise<ProjectMember[]> {
-  const res = await apiClient.get(`/projects/${projectId}/members`);
-  return res.data;
+  params?: { page?: number; size?: number },
+): Promise<ProjectMemberListResponse> {
+  const res = await apiClient.get(`/projects/${projectId}/members`, { params });
+  const data = res.data as ProjectMemberListResponse;
+  return { ...data, content: (data.content || []).map(mapMemberRoles) };
 }
 
-/** GET /api/projects/:id/members/search?q=keyword — 搜索成员（@提及候选） */
 export async function searchProjectMembers(
   projectId: string,
-  query: string,
-): Promise<
-  Array<{
-    id: string;
-    username: string;
-    name: string;
-    email: string;
-    avatar: string | null;
-  }>
-> {
+  keyword: string,
+): Promise<ProjectMember[]> {
   const res = await apiClient.get(`/projects/${projectId}/members/search`, {
-    params: { q: query },
+    params: { keyword },
   });
   return res.data;
 }
 
-/** POST /api/projects/:id/members — 邀请成员 */
 export async function inviteProjectMember(
   projectId: string,
   username: string,
-): Promise<ProjectMember> {
-  const res = await apiClient.post(`/projects/${projectId}/members`, { username });
-  return res.data;
+): Promise<void> {
+  await apiClient.post(`/projects/${projectId}/members/invite`, { username });
 }
 
-/** PUT /api/projects/:id/members/:memberId/role — 修改成员角色 */
 export async function updateMemberRole(
   projectId: string,
-  memberId: string,
+  userId: string,
   role: 'PROJECT_OWNER' | 'PROJECT_MEMBER',
 ): Promise<void> {
-  await apiClient.put(`/projects/${projectId}/members/${memberId}/role`, { role });
+  const backendRole = role === 'PROJECT_OWNER' ? 'OWNER' : 'MEMBER';
+  await apiClient.put(`/projects/${projectId}/members/${userId}/role`, null, {
+    params: { role: backendRole },
+  });
 }
 
-/** DELETE /api/projects/:id/members/:memberId — 移除成员 */
 export async function removeProjectMember(
   projectId: string,
-  memberId: string,
+  userId: string,
 ): Promise<void> {
-  await apiClient.delete(`/projects/${projectId}/members/${memberId}`);
+  await apiClient.delete(`/projects/${projectId}/members/${userId}`);
 }

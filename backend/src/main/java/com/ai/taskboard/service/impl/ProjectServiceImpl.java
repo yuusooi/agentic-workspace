@@ -14,6 +14,7 @@ import com.ai.taskboard.mapper.BoardColumnMapper;
 import com.ai.taskboard.mapper.ProjectMapper;
 import com.ai.taskboard.mapper.ProjectMemberMapper;
 import com.ai.taskboard.mapper.UserMapper;
+import com.ai.taskboard.service.OperationLogService;
 import com.ai.taskboard.service.ProjectService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -32,6 +33,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectMemberMapper projectMemberMapper;
     private final UserMapper userMapper;
     private final BoardColumnMapper boardColumnMapper;
+    private final OperationLogService operationLogService;
 
     private void checkProjectOwner(Long userId, Long projectId) {
         String role = UserContext.getUserRole();
@@ -127,6 +129,7 @@ public class ProjectServiceImpl implements ProjectService {
         doneCol.setSortOrder(2);
         doneCol.setStatusMapping(Constants.STATUS_DONE);
         boardColumnMapper.insert(doneCol);
+        operationLogService.log(userId, "PROJECT", "CREATE", project.getId(), "创建项目：" + project.getName(), null);
 
         return convertToVO(project, userId);
     }
@@ -155,6 +158,7 @@ public class ProjectServiceImpl implements ProjectService {
         if (project == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
+        operationLogService.log(userId, "PROJECT", "DELETE", projectId, "删除项目：" + project.getName(), null);
         projectMapper.deleteById(projectId);
     }
 
@@ -209,7 +213,7 @@ public class ProjectServiceImpl implements ProjectService {
         checkProjectOwner(userId, projectId);
 
         User inviteUser = userMapper.selectOne(
-                new LambdaQueryWrapper<User>().eq(User::getEmail, request.getEmail()));
+                new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
         if (inviteUser == null) {
             throw new BusinessException("用户不存在");
         }
@@ -228,6 +232,7 @@ public class ProjectServiceImpl implements ProjectService {
         member.setRole(request.getRole());
         member.setJoinedAt(LocalDateTime.now());
         projectMemberMapper.insert(member);
+        operationLogService.log(userId, "MEMBER", "INVITE", projectId, "邀请" + inviteUser.getNickname() + "加入项目", null);
     }
 
     @Override
@@ -239,6 +244,8 @@ public class ProjectServiceImpl implements ProjectService {
             throw new BusinessException("不能移除自己");
         }
 
+        User removedUser = userMapper.selectById(memberUserId);
+        operationLogService.log(userId, "MEMBER", "REMOVE", projectId, "移除成员" + (removedUser != null ? removedUser.getNickname() : ""), null);
         projectMemberMapper.delete(
                 new LambdaQueryWrapper<ProjectMember>()
                         .eq(ProjectMember::getProjectId, projectId)
@@ -260,6 +267,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         member.setRole(role);
         projectMemberMapper.updateById(member);
+        operationLogService.log(userId, "MEMBER", "ROLE_CHANGE", projectId, "修改成员角色为" + role, null);
     }
 
     @Override
@@ -275,6 +283,7 @@ public class ProjectServiceImpl implements ProjectService {
             return ProjectMemberVO.builder()
                     .id(member.getId())
                     .userId(member.getUserId())
+                    .username(user != null ? user.getUsername() : null)
                     .email(user != null ? user.getEmail() : null)
                     .nickname(user != null ? user.getNickname() : null)
                     .avatar(user != null ? user.getAvatar() : null)
@@ -304,6 +313,7 @@ public class ProjectServiceImpl implements ProjectService {
             return ProjectMemberVO.builder()
                     .id(member.getId())
                     .userId(member.getUserId())
+                    .username(user.getUsername())
                     .email(user.getEmail())
                     .nickname(user.getNickname())
                     .avatar(user.getAvatar())

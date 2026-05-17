@@ -14,7 +14,7 @@ spring:
 
   data:
     redis:
-      host: localhost
+      host: 192.168.195.132
       port: 6379
       password:
       database: 0
@@ -36,3 +36,18 @@ logging:
   level:
     com.ai.taskboard: debug
     com.ai.taskboard.mapper: debug
+
+ai:
+  llm:
+    base-url: https://api.moonshot.cn/v1
+    api-key: sk-LLHiDkqI7fqXLwooasTYNEnT5O5cTDrs5pEs3ccdwOMpgKS1
+    model: moonshot-v1-auto
+    max-tokens: 4096
+    temperature: 0.7
+  sse:
+    timeout: 300000
+    max-concurrent-per-user: 3
+    max-concurrent-per-project: 10
+    max-concurrent-global: 100
+  confirmation:
+    ttl-minutes: 30

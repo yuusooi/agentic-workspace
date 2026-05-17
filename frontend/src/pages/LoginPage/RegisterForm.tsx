@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Alert } from 'antd';
 import {
   UserOutlined,
@@ -6,7 +7,6 @@ import {
   LockOutlined,
   SafetyOutlined,
 } from '@ant-design/icons';
-import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api-client';
 
 interface RegisterFormValues {
@@ -19,12 +19,11 @@ interface RegisterFormValues {
 
 export default function RegisterForm() {
   const [form] = Form.useForm<RegisterFormValues>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [codeSending, setCodeSending] = useState(false);
   const [countdown, setCountdown] = useState(0);
-
-  const setAuth = useAuthStore((s) => s.setAuth);
 
   const startCountdown = () => {
     setCountdown(60);
@@ -51,8 +50,9 @@ export default function RegisterForm() {
       await apiClient.post('/auth/send-code', { email, purpose: 'REGISTER' });
       startCountdown();
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || '发送验证码失败');
+      const errData = (err as { response?: { data?: { message?: string } } })?.response?.data;
+      const errMessage = (errData as any)?.message || '发送验证码失败';
+      setError(errMessage);
     } finally {
       setCodeSending(false);
     }
@@ -68,16 +68,18 @@ export default function RegisterForm() {
 
     setLoading(true);
     try {
-      const res = await apiClient.post('/auth/register', {
+      await apiClient.post('/auth/register', {
         username: values.username,
         email: values.email,
         code: values.code,
         password: values.password,
+        confirmPassword: values.confirmPassword,
       });
-      setAuth(res.data.user, res.data.access_token, res.data.refresh_token);
+      navigate('/login', { replace: true, state: { registered: true } });
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || '注册失败');
+      const errData = (err as { response?: { data?: { message?: string } } })?.response?.data;
+      const errMessage = (errData as any)?.message || '注册失败';
+      setError(errMessage);
     } finally {
       setLoading(false);
     }
@@ -87,7 +89,7 @@ export default function RegisterForm() {
     <div className="login-form-wrapper">
       {error && (
         <Alert
-          message={error}
+          title={error}
           type="error"
           showIcon
           className="login-alert"

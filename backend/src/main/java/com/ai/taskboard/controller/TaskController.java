@@ -78,7 +78,7 @@ public class TaskController {
 
     @Operation(summary = "上传附件")
     @PostMapping("/{id}/attachments")
-    public Result<String> uploadAttachment(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+    public Result<AttachmentVO> uploadAttachment(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         return Result.success(taskService.uploadAttachment(UserContext.getUserId(), id, file));
     }
 

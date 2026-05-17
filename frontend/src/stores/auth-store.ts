@@ -3,10 +3,10 @@ import { create } from 'zustand';
 export interface AuthUser {
   id: string;
   username: string;
-  name: string;
+  nickname: string;
   email: string;
   role: 'ADMIN' | 'USER';
-  can_create_project: boolean;
+  canCreateProject: boolean;
   avatar: string | null;
 }
 

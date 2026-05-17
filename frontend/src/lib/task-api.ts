@@ -1,7 +1,5 @@
 import apiClient from './api-client';
 
-// ── Types ──────────────────────────────────────────────
-
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
@@ -12,145 +10,128 @@ export interface TaskTag {
 }
 
 export interface TaskAssignee {
-  id: string;
-  name: string;
+  userId: string;
+  nickname: string;
   avatar: string | null;
 }
 
 export interface TaskAttachment {
   id: string;
-  file_url: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  created_at: string;
-  uploaded_by: string;
+  filePath: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  createdAt: string;
+  uploaderId: string;
 }
 
 export interface TaskComment {
   id: string;
-  task_id: string;
-  user_id: string;
+  taskId: string;
   content: string;
-  mentions: string[];
-  created_at: string;
-  user: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  };
+  authorId: string;
+  authorName: string;
+  authorAvatar: string | null;
+  parentId: string | null;
+  createdAt: string;
+  replies?: TaskComment[];
 }
 
 export interface TaskStatusHistory {
   id: string;
-  task_id: string;
-  old_status: TaskStatus | null;
-  new_status: TaskStatus;
-  changed_by: string;
-  changed_at: string;
-  user: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  };
+  taskId: string;
+  oldStatus: TaskStatus | null;
+  newStatus: TaskStatus;
+  changedBy: string;
+  changedAt: string;
 }
 
 export interface Task {
   id: string;
-  project_id: string;
-  column_id: string;
+  projectId: string;
+  columnId: string;
+  columnName: string;
   title: string;
   description: string;
-  ai_summary: string;
-  status: TaskStatus;
   priority: TaskPriority;
-  deadline: string | null;
-  estimated_hours: number | null;
-  actual_hours: number | null;
-  position: number;
+  status: TaskStatus;
+  sortOrder: number;
+  dueDate: string | null;
+  creatorId: string;
+  creatorName: string;
   version: number;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
   tags: TaskTag[];
   assignees: TaskAssignee[];
-  attachments: TaskAttachment[];
 }
 
 export interface TaskDetail extends Task {
-  comments: TaskComment[];
-  status_history: TaskStatusHistory[];
+  attachments?: TaskAttachment[];
+  comments?: TaskComment[];
+  statusHistory?: TaskStatusHistory[];
 }
 
 export interface TaskListParams {
+  projectId?: string;
+  columnId?: string;
   page?: number;
   size?: number;
   status?: TaskStatus;
   priority?: TaskPriority;
-  assignee_id?: string;
+  assigneeId?: string;
   keyword?: string;
-  overdue?: boolean;
-  sort?: 'deadline' | 'priority' | 'created_at';
 }
 
 export interface PaginatedResponse<T> {
   content: T[];
   totalElements: number;
   totalPages: number;
-  number: number;
-  size: number;
 }
 
 export interface CreateTaskPayload {
+  projectId: string;
+  columnId: string;
   title: string;
   description?: string;
   priority?: TaskPriority;
-  deadline?: string | null;
-  estimated_hours?: number | null;
-  column_id?: string;
-  assignee_ids?: string[];
-  tag_ids?: string[];
+  dueDate?: string | null;
+  assigneeIds?: string[];
+  tagIds?: string[];
 }
 
 export interface UpdateTaskPayload {
   title?: string;
   description?: string;
   priority?: TaskPriority;
-  deadline?: string | null;
-  estimated_hours?: number | null;
-  actual_hours?: number | null;
   status?: TaskStatus;
-  column_id?: string;
-  version: number;
+  columnId?: string;
+  sortOrder?: number;
+  dueDate?: string | null;
+  version?: number;
+  estimatedHours?: number | null;
+  actualHours?: number | null;
 }
 
-// ── API Functions ──────────────────────────────────────
-
-/** GET /api/projects/:id/tasks — 任务列表（分页、筛选、排序） */
 export async function getTasks(
-  projectId: string,
   params?: TaskListParams,
 ): Promise<PaginatedResponse<Task>> {
-  const res = await apiClient.get(`/projects/${projectId}/tasks`, { params });
+  const res = await apiClient.get('/tasks', { params });
   return res.data;
 }
 
-/** POST /api/projects/:id/tasks — 创建任务 */
 export async function createTask(
-  projectId: string,
   payload: CreateTaskPayload,
 ): Promise<Task> {
-  const res = await apiClient.post(`/projects/${projectId}/tasks`, payload);
+  const res = await apiClient.post('/tasks', payload);
   return res.data;
 }
 
-/** GET /api/tasks/:id — 任务详情 */
 export async function getTaskDetail(taskId: string): Promise<TaskDetail> {
   const res = await apiClient.get(`/tasks/${taskId}`);
   return res.data;
 }
 
-/** PUT /api/tasks/:id — 更新任务（乐观锁：需传 version） */
 export async function updateTask(
   taskId: string,
   payload: UpdateTaskPayload,
@@ -159,28 +140,26 @@ export async function updateTask(
   return res.data;
 }
 
-/** DELETE /api/tasks/:id — 删除任务（PROJECT_OWNER） */
 export async function deleteTask(taskId: string): Promise<void> {
   await apiClient.delete(`/tasks/${taskId}`);
 }
 
-/** PUT /api/tasks/:id/status — 更新状态 */
 export async function updateTaskStatus(
   taskId: string,
+  columnId: string,
   status: TaskStatus,
-): Promise<void> {
-  await apiClient.put(`/tasks/${taskId}/status`, { status });
+): Promise<Task> {
+  const res = await apiClient.put(`/tasks/${taskId}/status`, { columnId, status });
+  return res.data;
 }
 
-/** POST /api/tasks/:id/assignees — 添加负责人 */
-export async function addAssignee(
+export async function addAssignees(
   taskId: string,
-  userId: string,
+  userIds: string[],
 ): Promise<void> {
-  await apiClient.post(`/tasks/${taskId}/assignees`, { user_id: userId });
+  await apiClient.post(`/tasks/${taskId}/assignees`, userIds);
 }
 
-/** DELETE /api/tasks/:id/assignees/:userId — 移除负责人 */
 export async function removeAssignee(
   taskId: string,
   userId: string,
@@ -188,40 +167,38 @@ export async function removeAssignee(
   await apiClient.delete(`/tasks/${taskId}/assignees/${userId}`);
 }
 
-/** PUT /api/tasks/:id/tags — 设置标签 */
 export async function setTaskTags(
   taskId: string,
   tagIds: string[],
 ): Promise<void> {
-  await apiClient.put(`/tasks/${taskId}/tags`, { tag_ids: tagIds });
+  await apiClient.put(`/tasks/${taskId}/tags`, tagIds);
 }
 
-/** GET /api/tasks/:id/comments — 进度列表 */
 export async function getTaskComments(
   taskId: string,
-): Promise<TaskComment[]> {
-  const res = await apiClient.get(`/tasks/${taskId}/comments`);
+  params?: { page?: number; size?: number },
+): Promise<PaginatedResponse<TaskComment>> {
+  const res = await apiClient.get(`/tasks/${taskId}/comments`, { params });
   return res.data;
 }
 
-/** POST /api/tasks/:id/comments — 添加进度 */
 export async function addTaskComment(
   taskId: string,
   content: string,
+  parentId?: string,
 ): Promise<TaskComment> {
-  const res = await apiClient.post(`/tasks/${taskId}/comments`, { content });
+  const res = await apiClient.post(`/tasks/${taskId}/comments`, { content, parentId: parentId || undefined });
   return res.data;
 }
 
-/** GET /api/tasks/:id/history — 状态变更历史 */
 export async function getTaskHistory(
   taskId: string,
-): Promise<TaskStatusHistory[]> {
-  const res = await apiClient.get(`/tasks/${taskId}/history`);
+  params?: { page?: number; size?: number },
+): Promise<PaginatedResponse<TaskStatusHistory>> {
+  const res = await apiClient.get(`/tasks/${taskId}/status-history`, { params });
   return res.data;
 }
 
-/** POST /api/tasks/:id/attachments — 上传附件 */
 export async function uploadAttachment(
   taskId: string,
   file: File,
@@ -234,27 +211,21 @@ export async function uploadAttachment(
   return res.data;
 }
 
-/** DELETE /api/attachments/:id — 删除附件 */
 export async function deleteAttachment(attachmentId: string): Promise<void> {
-  await apiClient.delete(`/attachments/${attachmentId}`);
+  await apiClient.delete(`/tasks/attachments/${attachmentId}`);
 }
-
-// ── Tag API ────────────────────────────────────────────
 
 export interface Tag {
   id: string;
-  project_id: string;
   name: string;
   color: string;
 }
 
-/** GET /api/projects/:id/tags — 项目标签列表 */
 export async function getProjectTags(projectId: string): Promise<Tag[]> {
   const res = await apiClient.get(`/projects/${projectId}/tags`);
   return res.data;
 }
 
-/** POST /api/projects/:id/tags — 创建标签 */
 export async function createProjectTag(
   projectId: string,
   payload: { name: string; color?: string },
@@ -263,15 +234,12 @@ export async function createProjectTag(
   return res.data;
 }
 
-/** DELETE /api/tags/:id — 删除标签 */
 export async function deleteProjectTag(
-  _projectId: string,
+  projectId: string,
   tagId: string,
 ): Promise<void> {
-  await apiClient.delete(`/tags/${tagId}`);
+  await apiClient.delete(`/projects/${projectId}/tags/${tagId}`);
 }
-
-// ── Priority helpers ───────────────────────────────────
 
 export const priorityConfig: Record<
   TaskPriority,

@@ -6,14 +6,6 @@ import App from './App';
 import { notionTheme } from './theme/theme';
 
 async function bootstrap() {
-  if (import.meta.env.DEV) {
-    const [{ setupAuthMock }, apiClient] = await Promise.all([
-      import('./mock/auth-mock'),
-      import('@/lib/api-client'),
-    ]);
-    setupAuthMock(apiClient.default);
-  }
-
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <ConfigProvider theme={notionTheme}>

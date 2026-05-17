@@ -13,7 +13,7 @@ export default function TaskFilterBar({ projectId: _projectId }: TaskFilterBarPr
   const setFilter = useTaskStore((s) => s.setFilter);
   const resetFilter = useTaskStore((s) => s.resetFilter);
 
-  const hasFilter = filter.status || filter.priority || filter.keyword || filter.overdue;
+  const hasFilter = filter.status || filter.priority || filter.keyword;
 
   return (
     <div style={{
@@ -58,17 +58,6 @@ export default function TaskFilterBar({ projectId: _projectId }: TaskFilterBarPr
           value: k,
           label: v.label,
         }))}
-      />
-      <Select
-        placeholder="排序"
-        value={filter.sort || 'created_at'}
-        onChange={(v: 'deadline' | 'priority' | 'created_at') => setFilter({ sort: v })}
-        style={{ width: 130 }}
-        options={[
-          { value: 'created_at', label: '创建时间' },
-          { value: 'deadline', label: '截止日期' },
-          { value: 'priority', label: '优先级' },
-        ]}
       />
       {hasFilter && (
         <Button

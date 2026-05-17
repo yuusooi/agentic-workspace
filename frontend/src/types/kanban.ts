@@ -9,62 +9,44 @@ export interface TaskTag {
 }
 
 export interface TaskAssigneeUser {
-  id: string;
-  user_id: string;
-  name: string;
+  userId: string;
+  nickname: string;
   avatar: string | null;
 }
 
-export interface Task {
+export interface KanbanTask {
   id: string;
-  project_id: string;
-  column_id: string;
+  projectId: string;
+  columnId: string;
   title: string;
   status: TaskStatus;
   priority: TaskPriority;
-  deadline: string | null;
-  position: number;
+  dueDate: string | null;
+  sortOrder: number;
   version: number;
   assignees: TaskAssigneeUser[];
   tags: TaskTag[];
-  ai_generated: boolean;
 }
 
 export interface BoardColumn {
   id: string;
-  project_id: string;
   name: string;
-  status_mapping: TaskStatus;
-  position: number;
-  is_default: boolean;
-  color: string;
-  tasks: Task[];
-}
-
-export interface BoardResponse {
-  my_role: ProjectRole;
-  columns: BoardColumn[];
+  sortOrder: number;
+  statusMapping: TaskStatus;
+  createdAt: string;
+  tasks: KanbanTask[];
 }
 
 export interface CreateColumnRequest {
   name: string;
-  status_mapping: TaskStatus;
-  color: string;
+  statusMapping?: TaskStatus;
 }
 
-export interface DeleteColumnRequest {
-  target_column_id: string;
-}
-
-export interface ReorderColumnsRequest {
-  column_orders: Array<{ id: string; position: number }>;
-}
-
-export interface ReorderTasksRequest {
-  task_orders: Array<{ task_id: string; position: number }>;
+export interface ColumnSortRequest {
+  columns: Array<{ columnId: string; sortOrder: number }>;
 }
 
 export interface UpdateTaskStatusRequest {
   status: TaskStatus;
-  column_id: string;
+  columnId: string;
 }

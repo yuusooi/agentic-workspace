@@ -11,6 +11,7 @@ public class Constants {
     public static final String REDIS_VERIFY_CODE_PREFIX = "verify:code:";
     public static final String REDIS_LOGIN_FAIL_PREFIX = "login:fail:";
     public static final String REDIS_LOCK_PREFIX = "login:lock:";
+    public static final String REDIS_CODE_RATE_PREFIX = "verify:rate:";
 
     public static final int MAX_LOGIN_FAIL_COUNT = 5;
     public static final long LOCK_DURATION_MINUTES = 15;

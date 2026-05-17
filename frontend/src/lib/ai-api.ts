@@ -16,34 +16,35 @@ export interface AIDiffPreview {
 }
 
 export interface AIChatSession {
-  id: string;
-  user_id: string;
-  project_id: string;
+  id: number;
+  user_id: number;
+  project_id: number;
   title: string;
   created_at: string;
   message_count: number;
 }
 
 export interface AIChatMessage {
-  id: string;
-  session_id: string;
+  id: number;
+  session_id: number;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  tool_calls: AIToolCall[] | null;
-  references: unknown[] | null;
+  tool_calls: unknown;
+  references: unknown;
   created_at: string;
 }
 
 export interface AIOperationLog {
-  id: string;
-  user_id: string;
+  id: number;
+  user_id: number;
+  user_name: string;
   prompt: string;
   ai_thinking: string;
-  tool_calls: string;
+  tool_calls: unknown;
   ai_output: string;
-  diff_preview: string;
+  diff_preview: unknown;
   user_action: string;
-  executed_action: string;
+  executed_action: unknown;
   created_at: string;
 }
 
@@ -62,12 +63,12 @@ export async function getAIChatSessions(params?: {
   return res.data;
 }
 
-export async function getAIChatSessionDetail(id: string): Promise<AIChatSession & { messages: AIChatMessage[] }> {
+export async function getAIChatSessionDetail(id: number): Promise<AIChatSession & { messages: AIChatMessage[] }> {
   const res = await apiClient.get(`/ai/chat-sessions/${id}`);
   return res.data;
 }
 
-export async function deleteAIChatSession(id: string): Promise<void> {
+export async function deleteAIChatSession(id: number): Promise<void> {
   await apiClient.delete(`/ai/chat-sessions/${id}`);
 }
 

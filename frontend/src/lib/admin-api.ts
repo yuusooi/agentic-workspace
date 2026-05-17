@@ -3,21 +3,21 @@ import apiClient from './api-client';
 export interface AdminUser {
   id: string;
   username: string;
-  name: string;
+  nickname: string;
   email: string;
   role: 'ADMIN' | 'USER';
-  can_create_project: boolean;
-  is_active: boolean;
+  canCreateProject: boolean;
+  status: number;
   avatar: string | null;
-  created_at: string;
+  loginFailCount: number;
+  lockTime: string | null;
+  createdAt: string;
 }
 
 export interface AdminUserListResponse {
   content: AdminUser[];
   totalElements: number;
   totalPages: number;
-  number: number;
-  size: number;
 }
 
 export async function getAdminUsers(params?: {
@@ -32,55 +32,52 @@ export async function getAdminUsers(params?: {
 export async function updateAdminUserRole(
   userId: string,
   role: 'ADMIN' | 'USER',
-): Promise<void> {
-  await apiClient.put(`/admin/users/${userId}/role`, { role });
+): Promise<AdminUser> {
+  const res = await apiClient.put(`/admin/users/${userId}/role`, null, {
+    params: { role },
+  });
+  return res.data;
 }
 
 export async function toggleAdminUserStatus(
   userId: string,
-  isActive: boolean,
-): Promise<void> {
-  await apiClient.put(`/admin/users/${userId}/status`, { is_active: isActive });
+  status: number,
+): Promise<AdminUser> {
+  const res = await apiClient.put(`/admin/users/${userId}/status`, null, {
+    params: { status },
+  });
+  return res.data;
 }
 
 export async function updateAdminUserCanCreateProject(
   userId: string,
-  canCreateProject: boolean,
-): Promise<void> {
-  await apiClient.put(`/admin/users/${userId}/can-create-project`, {
-    can_create_project: canCreateProject,
+  canCreateProject: number,
+): Promise<AdminUser> {
+  const res = await apiClient.put(`/admin/users/${userId}/create-project-permission`, null, {
+    params: { canCreateProject },
   });
+  return res.data;
 }
 
 export interface AdminProject {
   id: string;
   name: string;
   description: string;
-  icon: string;
   visibility: 'PUBLIC' | 'PRIVATE';
-  created_by: string;
-  created_at: string;
-  owner: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  };
-  member_count: number;
-  task_count: number;
+  ownerId: string;
+  ownerName: string;
+  createdAt: string;
 }
 
 export interface AdminProjectListResponse {
   content: AdminProject[];
   totalElements: number;
   totalPages: number;
-  number: number;
-  size: number;
 }
 
 export async function getAdminProjects(params?: {
   page?: number;
   size?: number;
-  keyword?: string;
 }): Promise<AdminProjectListResponse> {
   const res = await apiClient.get('/admin/projects', { params });
   return res.data;

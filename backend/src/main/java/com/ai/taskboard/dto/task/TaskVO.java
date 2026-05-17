@@ -16,10 +16,13 @@ public class TaskVO {
     private String columnName;
     private String title;
     private String description;
+    private String aiSummary;
     private String priority;
     private String status;
     private Integer sortOrder;
     private LocalDate dueDate;
+    private java.math.BigDecimal estimatedHours;
+    private java.math.BigDecimal actualHours;
     private Long creatorId;
     private String creatorName;
     private Integer version;

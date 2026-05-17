@@ -5,11 +5,13 @@ import com.ai.taskboard.common.result.Result;
 import com.ai.taskboard.common.util.UserContext;
 import com.ai.taskboard.dto.project.*;
 import com.ai.taskboard.service.ProjectService;
+import com.ai.taskboard.service.AiService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -20,6 +22,7 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final AiService aiService;
 
     @Operation(summary = "创建项目")
     @PostMapping
@@ -99,5 +102,11 @@ public class ProjectController {
             @PathVariable Long id,
             @RequestParam String keyword) {
         return Result.success(projectService.searchMembers(UserContext.getUserId(), id, keyword));
+    }
+
+    @Operation(summary = "项目健康度分析（SSE流式）")
+    @PostMapping("/{id}/health")
+    public SseEmitter streamProjectHealth(@PathVariable Long id) {
+        return aiService.streamProjectHealth(UserContext.getUserId(), id);
     }
 }

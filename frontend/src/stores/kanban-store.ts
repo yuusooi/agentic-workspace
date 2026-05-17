@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { message } from 'antd';
-import type { BoardColumn, ProjectRole, TaskStatus, Task } from '@/types/kanban';
+import type { BoardColumn, ProjectRole, TaskStatus, KanbanTask } from '@/types/kanban';
 import * as kanbanApi from '@/lib/kanban-api';
+import { getTasks } from '@/lib/task-api';
+import { useProjectStore } from './project-store';
 
 interface KanbanState {
   columns: BoardColumn[];
@@ -11,12 +13,12 @@ interface KanbanState {
 
   loadBoard: (projectId: string) => Promise<void>;
   addColumn: (name: string, statusMapping: TaskStatus, color: string) => Promise<void>;
-  removeColumn: (columnId: string, targetColumnId: string) => Promise<void>;
+  removeColumn: (columnId: string) => Promise<void>;
   reorderColumns: (columnIds: string[]) => Promise<void>;
   moveTaskToColumn: (taskId: string, targetColumnId: string, targetStatus: TaskStatus) => Promise<void>;
   reorderTasksInColumn: (columnId: string) => Promise<void>;
   moveTaskLocally: (taskId: string, fromColumnId: string, toColumnId: string, toIndex: number) => void;
-  reorderTasksLocally: (columnId: string, reorderedTasks: Task[]) => void;
+  reorderTasksLocally: (columnId: string, reorderedTasks: KanbanTask[]) => void;
   reorderColumnsLocally: (reorderedColumns: BoardColumn[]) => void;
   reset: () => void;
 }
@@ -30,50 +32,77 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
   loadBoard: async (projectId: string) => {
     set({ loading: true, projectId });
     try {
-      const data = await kanbanApi.fetchBoard(projectId);
-      set({ columns: data.columns, myRole: data.my_role, loading: false });
+      const project = useProjectStore.getState().currentProject;
+      const myRole = project?.myRole || null;
+      const columns = await kanbanApi.fetchBoard(projectId);
+      const tasksRes = await getTasks({ projectId, size: 200 });
+      const tasks: KanbanTask[] = (tasksRes.content || []).map((t: any) => ({
+        id: String(t.id),
+        projectId: String(t.projectId),
+        columnId: String(t.columnId),
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        dueDate: t.dueDate,
+        sortOrder: t.sortOrder || 0,
+        version: t.version || 0,
+        assignees: (t.assignees || []).map((a: any) => ({
+          userId: String(a.userId),
+          nickname: a.nickname,
+          avatar: a.avatar,
+        })),
+        tags: (t.tags || []).map((tag: any) => ({
+          id: String(tag.id),
+          name: tag.name,
+          color: tag.color,
+        })),
+      }));
+
+      const columnsWithTasks: BoardColumn[] = (columns || []).map((col: any) => ({
+        id: String(col.id),
+        name: col.name,
+        sortOrder: col.sortOrder,
+        statusMapping: col.statusMapping,
+        createdAt: col.createdAt,
+        tasks: tasks
+          .filter((t) => t.columnId === String(col.id))
+          .sort((a, b) => a.sortOrder - b.sortOrder),
+      }));
+
+      set({ columns: columnsWithTasks, myRole, loading: false });
     } catch {
       message.error('加载看板失败');
       set({ loading: false });
     }
   },
 
-  addColumn: async (name, statusMapping, color) => {
+  addColumn: async (name, statusMapping, _color) => {
     const { projectId, columns } = get();
     if (!projectId) return;
     try {
-      const col = await kanbanApi.createColumn(projectId, { name, status_mapping: statusMapping, color });
+      const col = await kanbanApi.createColumn(projectId, { name, statusMapping });
       set({ columns: [...columns, { ...col, tasks: [] }] });
     } catch {
       message.error('添加列失败');
     }
   },
 
-  removeColumn: async (columnId, targetColumnId) => {
-    const { columns } = get();
+  removeColumn: async (columnId) => {
     try {
-      await kanbanApi.deleteColumn(columnId, { target_column_id: targetColumnId });
-      const targetCol = columns.find((c) => c.id === targetColumnId);
-      const removedCol = columns.find((c) => c.id === columnId);
-      const updated = columns
-        .filter((c) => c.id !== columnId)
-        .map((c) => {
-          if (c.id === targetColumnId && targetCol && removedCol) {
-            return { ...c, tasks: [...c.tasks, ...removedCol.tasks] };
-          }
-          return c;
-        });
-      set({ columns: updated });
+      await kanbanApi.deleteColumn(columnId);
+      const { columns } = get();
+      set({ columns: columns.filter((c) => c.id !== columnId) });
     } catch {
       message.error('删除列失败');
     }
   },
 
   reorderColumns: async (columnIds) => {
-    const { columns } = get();
+    const { columns, projectId } = get();
+    if (!projectId) return;
     try {
-      await kanbanApi.reorderColumns({
-        column_orders: columnIds.map((id, i) => ({ id, position: i })),
+      await kanbanApi.sortColumns(projectId, {
+        columns: columnIds.map((id, i) => ({ columnId: id, sortOrder: i })),
       });
     } catch {
       message.error('排序失败');
@@ -83,7 +112,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
   moveTaskToColumn: async (taskId, targetColumnId, targetStatus) => {
     try {
-      await kanbanApi.updateTaskStatus(taskId, { status: targetStatus, column_id: targetColumnId });
+      await kanbanApi.updateTaskStatus(taskId, { columnId: targetColumnId, status: targetStatus });
     } catch {
       message.error('移动任务失败');
     }
@@ -93,9 +122,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     const col = get().columns.find((c) => c.id === columnId);
     if (!col) return;
     try {
-      await kanbanApi.reorderTasks(columnId, {
-        task_orders: col.tasks.map((t, i) => ({ task_id: t.id, position: i })),
-      });
+      await kanbanApi.sortTasksInColumn(columnId, col.tasks.map((t) => t.id));
     } catch {
       message.error('排序失败');
     }
@@ -116,7 +143,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
         const task = fromCol?.tasks.find((t) => t.id === taskId);
         if (!task) return col;
         const newTasks = [...col.tasks];
-        newTasks.splice(toIndex, 0, { ...task, column_id: toColumnId });
+        newTasks.splice(toIndex, 0, { ...task, columnId: toColumnId });
         return { ...col, tasks: newTasks };
       }
       return col;

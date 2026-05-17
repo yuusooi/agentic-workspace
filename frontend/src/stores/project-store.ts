@@ -5,16 +5,11 @@ export interface ProjectInfo {
   id: string;
   name: string;
   description: string;
-  icon: string;
   visibility: 'PUBLIC' | 'PRIVATE';
-  created_by: string;
-  created_at: string;
-  my_role: 'PROJECT_OWNER' | 'PROJECT_MEMBER';
-  owner: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  };
+  ownerId: string;
+  ownerName: string;
+  myRole: 'PROJECT_OWNER' | 'PROJECT_MEMBER' | null;
+  createdAt: string;
 }
 
 interface ProjectState {
@@ -33,17 +28,16 @@ export const useProjectStore = create<ProjectState>((set) => ({
   clearCurrentProject: () => set({ currentProject: null, members: [] }),
 }));
 
-/** Permission helpers */
 export function isAdmin(user: { role: string } | null): boolean {
   return user?.role === 'ADMIN';
 }
 
 export function isProjectOwner(project: ProjectState['currentProject']): boolean {
-  return project?.my_role === 'PROJECT_OWNER';
+  return project?.myRole === 'PROJECT_OWNER';
 }
 
-export function canCreateProject(user: { role: string; can_create_project: boolean } | null): boolean {
-  return user?.role === 'ADMIN' || user?.can_create_project === true;
+export function canCreateProject(user: { role: string; canCreateProject: boolean } | null): boolean {
+  return user?.role === 'ADMIN' || user?.canCreateProject === true;
 }
 
 export function isProjectOwnerOrAdmin(user: { role: string } | null, project: ProjectState['currentProject']): boolean {

@@ -92,7 +92,7 @@ export default function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) 
 
       {error && (
         <Alert
-          message={error}
+          title={error}
           type="error"
           showIcon
           className="login-alert"
@@ -100,7 +100,7 @@ export default function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) 
       )}
       {success && (
         <Alert
-          message="密码重置成功，正在跳转到登录页..."
+          title="密码重置成功，正在跳转到登录页..."
           type="success"
           showIcon
           className="login-alert"

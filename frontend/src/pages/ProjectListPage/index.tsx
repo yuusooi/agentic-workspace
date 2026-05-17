@@ -20,7 +20,7 @@ export default function ProjectListPage() {
     try {
       setLoading(true);
       const data = await getMyProjects();
-      setProjects(data);
+      setProjects(data.content || []);
     } catch {
       message.error('加载项目列表失败');
     } finally {
@@ -212,7 +212,7 @@ function ProjectCard({
         color: '#a39e98',
       }}>
         <span>{project.visibility === 'PUBLIC' ? '公开' : '私有'}</span>
-        <span>{project.my_role === 'PROJECT_OWNER' ? '负责人' : '成员'}</span>
+        <span>{project.myRole === 'PROJECT_OWNER' ? '负责人' : '成员'}</span>
       </div>
     </div>
   );

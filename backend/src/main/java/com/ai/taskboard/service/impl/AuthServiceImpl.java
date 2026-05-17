@@ -36,6 +36,11 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendVerifyCode(SendCodeRequest request) {
+        String rateKey = Constants.REDIS_CODE_RATE_PREFIX + request.getEmail();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(rateKey))) {
+            throw new BusinessException(ResultCode.CODE_RATE_LIMITED);
+        }
+
         String code = RandomUtil.randomNumbers(6);
         String key = Constants.REDIS_VERIFY_CODE_PREFIX + request.getEmail();
         redisTemplate.opsForValue().set(key, code, 5, TimeUnit.MINUTES);
@@ -49,6 +54,8 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             throw new BusinessException("邮件发送失败，请稍后重试");
         }
+
+        redisTemplate.opsForValue().set(rateKey, "1", 60, TimeUnit.SECONDS);
     }
 
     @Override
@@ -59,13 +66,36 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.VERIFY_CODE_ERROR);
         }
 
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new BusinessException("两次输入的密码不一致");
+        }
+
+        String password = request.getPassword();
+        if (password.length() < 8 || password.length() > 128
+                || !password.matches(".*[A-Z].*")
+                || !password.matches(".*[a-z].*")
+                || !password.matches(".*\\d.*")) {
+            throw new BusinessException("密码必须8-128位，包含大小写字母和数字");
+        }
+
+        if (!request.getUsername().matches("^[a-zA-Z][a-zA-Z0-9_-]{2,19}$")) {
+            throw new BusinessException("用户名必须3-20位，字母开头，仅允许字母、数字、下划线、连字符");
+        }
+
         Long count = userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getEmail, request.getEmail()));
         if (count > 0) {
             throw new BusinessException(ResultCode.EMAIL_EXISTS);
         }
 
+        Long usernameCount = userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
+        if (usernameCount > 0) {
+            throw new BusinessException(ResultCode.EMAIL_EXISTS.getCode(), "用户名已存在");
+        }
+
         User user = new User();
+        user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setNickname(request.getNickname());
@@ -97,16 +127,31 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (user.getLockTime() != null && user.getLockTime().plusMinutes(Constants.LOCK_DURATION_MINUTES).isAfter(LocalDateTime.now())) {
-            throw new BusinessException(ResultCode.ACCOUNT_LOCKED);
+            long remainingSeconds = java.time.Duration.between(LocalDateTime.now(),
+                    user.getLockTime().plusMinutes(Constants.LOCK_DURATION_MINUTES)).getSeconds();
+            throw new BusinessException(ResultCode.ACCOUNT_LOCKED,
+                    java.util.Map.of("locked_until", user.getLockTime().plusMinutes(Constants.LOCK_DURATION_MINUTES),
+                            "remaining_seconds", remainingSeconds));
+        }
+
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException(ResultCode.ACCOUNT_DISABLED);
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             user.setLoginFailCount(user.getLoginFailCount() + 1);
+            int remainingAttempts = Constants.MAX_LOGIN_FAIL_COUNT - user.getLoginFailCount();
             if (user.getLoginFailCount() >= Constants.MAX_LOGIN_FAIL_COUNT) {
                 user.setLockTime(LocalDateTime.now());
+                userMapper.updateById(user);
+                long remainingSeconds = Constants.LOCK_DURATION_MINUTES * 60;
+                throw new BusinessException(ResultCode.ACCOUNT_LOCKED,
+                        java.util.Map.of("locked_until", user.getLockTime().plusMinutes(Constants.LOCK_DURATION_MINUTES),
+                                "remaining_seconds", remainingSeconds));
             }
             userMapper.updateById(user);
-            throw new BusinessException(ResultCode.LOGIN_FAIL);
+            throw new BusinessException(ResultCode.INVALID_CREDENTIALS,
+                    java.util.Map.of("remaining_attempts", remainingAttempts));
         }
 
         user.setLoginFailCount(0);
@@ -125,10 +170,12 @@ public class AuthServiceImpl implements AuthService {
                 .expiresIn(900L)
                 .userInfo(UserInfo.builder()
                         .id(user.getId())
+                        .username(user.getUsername())
                         .email(user.getEmail())
                         .nickname(user.getNickname())
                         .avatar(user.getAvatar())
                         .role(user.getRole())
+                        .canCreateProject(user.getCanCreateProject())
                         .build())
                 .build();
     }
@@ -142,7 +189,7 @@ public class AuthServiceImpl implements AuthService {
         Long userId = jwtUtil.getUserIdFromToken(request.getRefreshToken());
         String redisKey = Constants.REDIS_REFRESH_TOKEN_PREFIX + userId;
         Object storedToken = redisTemplate.opsForValue().get(redisKey);
-        if (storedToken == null || !storedToken.equals(request.getRefreshToken())) {
+        if (storedToken == null || !String.valueOf(storedToken).equals(request.getRefreshToken())) {
             throw new BusinessException(ResultCode.TOKEN_INVALID);
         }
 
@@ -163,10 +210,12 @@ public class AuthServiceImpl implements AuthService {
                 .expiresIn(900L)
                 .userInfo(UserInfo.builder()
                         .id(user.getId())
+                        .username(user.getUsername())
                         .email(user.getEmail())
                         .nickname(user.getNickname())
                         .avatar(user.getAvatar())
                         .role(user.getRole())
+                        .canCreateProject(user.getCanCreateProject())
                         .build())
                 .build();
     }
@@ -209,10 +258,12 @@ public class AuthServiceImpl implements AuthService {
         }
         return UserInfo.builder()
                 .id(user.getId())
+                .username(user.getUsername())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .avatar(user.getAvatar())
                 .role(user.getRole())
+                .canCreateProject(user.getCanCreateProject())
                 .build();
     }
 }

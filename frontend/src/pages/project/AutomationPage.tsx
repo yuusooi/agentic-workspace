@@ -159,7 +159,7 @@ export default function AutomationPage() {
     <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} />
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(`/projects/${projectId}`)} />
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'rgba(0,0,0,.95)' }}>
             自动化规则
           </h1>

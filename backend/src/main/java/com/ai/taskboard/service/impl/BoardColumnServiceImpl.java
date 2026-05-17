@@ -6,9 +6,11 @@ import com.ai.taskboard.common.result.ResultCode;
 import com.ai.taskboard.common.util.UserContext;
 import com.ai.taskboard.dto.column.*;
 import com.ai.taskboard.entity.BoardColumn;
+import com.ai.taskboard.entity.Project;
 import com.ai.taskboard.entity.ProjectMember;
 import com.ai.taskboard.entity.Task;
 import com.ai.taskboard.mapper.BoardColumnMapper;
+import com.ai.taskboard.mapper.ProjectMapper;
 import com.ai.taskboard.mapper.ProjectMemberMapper;
 import com.ai.taskboard.mapper.TaskMapper;
 import com.ai.taskboard.service.BoardColumnService;
@@ -25,6 +27,7 @@ public class BoardColumnServiceImpl implements BoardColumnService {
 
     private final BoardColumnMapper boardColumnMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final ProjectMapper projectMapper;
     private final TaskMapper taskMapper;
 
     private void checkProjectOwnerOrAdmin(Long userId, Long projectId) {
@@ -53,7 +56,26 @@ public class BoardColumnServiceImpl implements BoardColumnService {
 
     @Override
     public List<BoardColumnVO> getBoard(Long userId, Long projectId) {
-        checkProjectMember(userId, projectId);
+        if (userId != null) {
+            String role = UserContext.getUserRole();
+            if (!Constants.ROLE_ADMIN.equals(role)) {
+                ProjectMember member = projectMemberMapper.selectOne(
+                        new LambdaQueryWrapper<ProjectMember>()
+                                .eq(ProjectMember::getProjectId, projectId)
+                                .eq(ProjectMember::getUserId, userId));
+                if (member == null) {
+                    Project project = projectMapper.selectById(projectId);
+                    if (project == null || !Constants.VISIBILITY_PUBLIC.equals(project.getVisibility())) {
+                        throw new BusinessException(ResultCode.NOT_PROJECT_MEMBER);
+                    }
+                }
+            }
+        } else {
+            Project project = projectMapper.selectById(projectId);
+            if (project == null || !Constants.VISIBILITY_PUBLIC.equals(project.getVisibility())) {
+                throw new BusinessException(ResultCode.NOT_PROJECT_MEMBER);
+            }
+        }
 
         List<BoardColumn> columns = boardColumnMapper.selectList(
                 new LambdaQueryWrapper<BoardColumn>()

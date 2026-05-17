@@ -51,6 +51,7 @@ export default function TaskDrawer() {
   const [saving, setSaving] = useState(false);
   const [editDescription, setEditDescription] = useState('');
   const [editTags, setEditTags] = useState<string[]>([]);
+  const [editAssignees, setEditAssignees] = useState<string[]>([]);
   const [comments, setComments] = useState<taskApi.TaskComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const user = useAuthStore((s) => s.user);
@@ -64,7 +65,7 @@ export default function TaskDrawer() {
   const canEditTask = (() => {
     if (!user || !currentTask) return false;
     if (isAdmin(user) || isProjectOwnerOrAdmin(user, currentProject)) return true;
-    if (currentTask.created_by === user.id || currentTask.assignees.some((a) => a.id === user.id)) return true;
+    if (String(currentTask.creatorId) === String(user.id) || (currentTask.assignees || []).some((a) => String(a.userId) === String(user.id))) return true;
     return false;
   })();
 
@@ -77,23 +78,25 @@ export default function TaskDrawer() {
         priority: currentTask.priority,
         status: currentTask.status,
         deadline: currentTask.deadline ? new Date(currentTask.deadline) : null,
-        estimated_hours: currentTask.estimated_hours,
-        actual_hours: currentTask.actual_hours,
+        estimated_hours: (currentTask as any).estimatedHours,
+        actual_hours: (currentTask as any).actualHours,
       });
       setEditDescription(currentTask.description || '');
-      setEditTags(currentTask.tags.map((t) => t.id));
+      setEditTags((currentTask.tags || []).map((t) => t.id));
+      setEditAssignees((currentTask.assignees || []).map((a) => a.userId));
       loadComments(currentTask.id);
     } else if (drawerOpen && isCreateMode) {
       form.resetFields();
       setEditDescription('');
       setEditTags([]);
+      setEditAssignees([]);
     }
   }, [drawerOpen, currentTask, drawerMode]);
 
   const loadComments = async (taskId: string) => {
     try {
       const data = await taskApi.getTaskComments(taskId);
-      setComments(data);
+      setComments(data.content || []);
     } catch {
       // silent
     }
@@ -105,15 +108,15 @@ export default function TaskDrawer() {
       setSaving(true);
 
       if (isCreateMode) {
-        const projectId = currentTask?.project_id;
+        const projectId = currentTask?.projectId;
         if (!projectId) return;
         const payload: taskApi.CreateTaskPayload = {
           title: values.title,
           description: editDescription || undefined,
           priority: values.priority,
           deadline: values.deadline?.toISOString() || null,
-          estimated_hours: values.estimated_hours || null,
-          tag_ids: editTags,
+          tagIds: editTags,
+          assigneeIds: editAssignees,
         };
         const task = await taskApi.createTask(projectId, payload);
         addTaskToList(task);
@@ -125,15 +128,19 @@ export default function TaskDrawer() {
           description: editDescription,
           priority: values.priority,
           deadline: values.deadline?.toISOString() || null,
-          estimated_hours: values.estimated_hours || null,
-          actual_hours: values.actual_hours || null,
           status: values.status,
           version: currentTask.version,
+          estimatedHours: values.estimated_hours ?? null,
+          actualHours: values.actual_hours ?? null,
         };
         const updated = await taskApi.updateTask(currentTask.id, payload);
         updateTaskInList(currentTask.id, updated);
-        if (editTags.length !== currentTask.tags.length || editTags.some((id) => !currentTask.tags.find((t) => t.id === id))) {
+        if (editTags.length !== (currentTask.tags || []).length || editTags.some((id) => !(currentTask.tags || []).find((t) => t.id === id))) {
           await taskApi.setTaskTags(currentTask.id, editTags);
+        }
+        const currentAssigneeIds = (currentTask.assignees || []).map((a) => a.userId);
+        if (editAssignees.length !== currentAssigneeIds.length || editAssignees.some((id) => !currentAssigneeIds.includes(id))) {
+          await taskApi.addAssignees(currentTask.id, editAssignees);
         }
         message.success('任务已更新');
         closeDrawer();
@@ -169,9 +176,9 @@ export default function TaskDrawer() {
   };
 
   const handleCreateTag = async (name: string, color: string) => {
-    if (!currentTask?.project_id) return;
+    if (!currentTask?.projectId) return;
     try {
-      return await taskApi.createProjectTag(currentTask.project_id, { name, color });
+      return await taskApi.createProjectTag(currentTask.projectId, { name, color });
     } catch {
       message.error('创建标签失败');
       return undefined;
@@ -182,7 +189,7 @@ export default function TaskDrawer() {
     if (currentTask) {
       setCurrentTask({
         ...currentTask,
-        attachments: [...currentTask.attachments, attachment],
+        attachments: [...(currentTask.attachments || []), attachment],
       });
     }
   };
@@ -191,7 +198,7 @@ export default function TaskDrawer() {
     if (currentTask) {
       setCurrentTask({
         ...currentTask,
-        attachments: currentTask.attachments.filter((a) => a.id !== attachmentId),
+        attachments: (currentTask.attachments || []).filter((a) => a.id !== attachmentId),
       });
     }
   };
@@ -321,20 +328,54 @@ export default function TaskDrawer() {
             </div>
 
             {!isViewMode && (
-              <Form.Item label="标签">
-                <TagSelector
-                  tags={projectTags}
-                  selectedTagIds={editTags}
-                  onChange={setEditTags}
-                  onCreateTag={handleCreateTag}
-                />
-              </Form.Item>
+              <>
+                <Form.Item label="负责人">
+                  <Select
+                    mode="multiple"
+                    placeholder="选择负责人（可多选）"
+                    value={editAssignees}
+                    onChange={(value) => setEditAssignees(value)}
+                    style={{ width: '100%' }}
+                    options={projectMembers?.map((m) => ({
+                      value: m.id,
+                      label: m.nickname,
+                    })) || []}
+                  />
+                </Form.Item>
+                <Form.Item label="标签">
+                  <TagSelector
+                    tags={projectTags}
+                    selectedTagIds={editTags}
+                    onChange={setEditTags}
+                    onCreateTag={handleCreateTag}
+                  />
+                </Form.Item>
+              </>
             )}
-            {isViewMode && currentTask && currentTask.tags.length > 0 && (
+            {isViewMode && currentTask && (
+              <>
+                {(currentTask.assignees || []).length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: '#a39e98', marginBottom: 6 }}>负责人</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {(currentTask.assignees || []).map((a) => (
+                        <span key={a.userId} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: '#f6f5f4', borderRadius: 9999, fontSize: 12 }}>
+                          <Avatar size={16} src={a.avatar} style={{ backgroundColor: '#31302e', fontSize: 8 }}>
+                            {a.nickname?.[0]}
+                          </Avatar>
+                          {a.nickname}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {isViewMode && currentTask && (currentTask.tags || []).length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: '#a39e98', marginBottom: 6 }}>标签</div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  {currentTask.tags.map((tag) => (
+                  {(currentTask.tags || []).map((tag) => (
                     <Tag key={tag.id} color={tag.color} style={{ borderRadius: 9999 }}>
                       {tag.name}
                     </Tag>
@@ -406,14 +447,14 @@ export default function TaskDrawer() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
                   {comments.map((c) => (
                     <div key={c.id} style={{ display: 'flex', gap: 8 }}>
-                      <Avatar size={24} src={c.user.avatar} style={{ backgroundColor: '#31302e', fontSize: 10, flexShrink: 0 }}>
-                        {c.user.name[0]}
+                      <Avatar size={24} src={c.authorAvatar} style={{ backgroundColor: '#31302e', fontSize: 10, flexShrink: 0 }}>
+                        {c.authorName[0]}
                       </Avatar>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(0,0,0,.95)' }}>{c.user.name}</span>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(0,0,0,.95)' }}>{c.authorName}</span>
                           <span style={{ fontSize: 11, color: '#a39e98' }}>
-                            {new Date(c.created_at).toLocaleDateString('zh-CN')}
+                            {new Date(c.createdAt).toLocaleDateString('zh-CN')}
                           </span>
                         </div>
                         <div style={{ fontSize: 13, color: '#615d59', lineHeight: 1.5, marginTop: 2 }}>
@@ -438,8 +479,8 @@ export default function TaskDrawer() {
                     rows={2}
                     style={{ flex: 1 }}
                     options={(projectMembers || []).map((m) => ({
-                      value: m.user.name,
-                      label: m.user.name,
+                      value: m.nickname,
+                      label: m.nickname,
                     }))}
                   />
                   <Button type="primary" onClick={handleAddComment} disabled={!newComment.trim()}>
@@ -451,7 +492,7 @@ export default function TaskDrawer() {
               {isViewMode && (
                 <>
                   <Divider style={{ margin: '4px 0' }} />
-                  <StatusHistoryTimeline history={currentTask.status_history || []} />
+                  <StatusHistoryTimeline history={(currentTask as any).statusHistory || []} />
                   <Divider style={{ margin: '4px 0' }} />
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Popconfirm

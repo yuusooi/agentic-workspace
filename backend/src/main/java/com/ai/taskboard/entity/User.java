@@ -1,6 +1,7 @@
 package com.ai.taskboard.entity;
 
 import com.ai.taskboard.common.base.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -11,6 +12,9 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = true)
 @TableName("user")
 public class User extends BaseEntity {
+
+    @TableField("username")
+    private String username;
 
     private String email;
     private String password;

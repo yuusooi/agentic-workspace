@@ -3,6 +3,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { BoardColumn, Task } from '@/types/kanban';
 import KanbanColumn from './KanbanColumn';
 import { useKanbanStore } from '@/stores/kanban-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 interface KanbanBoardProps {
   columns: BoardColumn[];
@@ -12,7 +13,9 @@ interface KanbanBoardProps {
 }
 
 export default function KanbanBoard({ columns, onDeleteColumn, onAddColumn, onTaskClick }: KanbanBoardProps) {
-  const canManage = useKanbanStore((s) => s.myRole) === 'PROJECT_OWNER';
+  const myRole = useKanbanStore((s) => s.myRole);
+  const user = useAuthStore((s) => s.user);
+  const canManage = myRole === 'PROJECT_OWNER' || user?.role === 'ADMIN';
   const columnIds = columns.map((c) => c.id);
 
   return (

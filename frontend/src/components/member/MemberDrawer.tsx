@@ -35,7 +35,7 @@ export default function MemberDrawer({
     setLoading(true);
     try {
       const list = await projectApi.getProjectMembers(projectId);
-      setMembers(list);
+      setMembers(list.content || []);
     } catch {
       message.error('加载成员列表失败');
     } finally {
@@ -123,7 +123,7 @@ export default function MemberDrawer({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {members.map((member) => {
-            const isSelf = member.user_id === user?.id;
+            const isSelf = String(member.userId) === String(user?.id);
             return (
               <div
                 key={member.id}
@@ -141,11 +141,11 @@ export default function MemberDrawer({
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLElement).style.background = 'transparent';
                 }}
-                onClick={() => onMemberClick?.(member.user_id)}
+                onClick={() => onMemberClick?.(member.userId)}
               >
                 <Avatar
                   size={32}
-                  src={member.user.avatar}
+                  src={member.avatar}
                   style={{
                     backgroundColor: '#31302e',
                     fontSize: 13,
@@ -153,11 +153,11 @@ export default function MemberDrawer({
                     flexShrink: 0,
                   }}
                 >
-                  {member.user.name[0]}
+                  {member.nickname?.[0]}
                 </Avatar>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(0,0,0,.95)' }}>
-                    {member.user.name}
+                    {member.nickname}
                     {isSelf && (
                       <span style={{ fontSize: 11, color: '#a39e98', marginLeft: 4, fontWeight: 400 }}>
                         (你)
@@ -165,7 +165,7 @@ export default function MemberDrawer({
                     )}
                   </div>
                   <div style={{ fontSize: 11, color: '#a39e98' }}>
-                    {member.user.email}
+                    {member.email}
                   </div>
                 </div>
                 {isOwner && !isSelf ? (
@@ -179,7 +179,7 @@ export default function MemberDrawer({
                       popupMatchSelectWidth={false}
                     />
                     <Popconfirm
-                      title={`确认移除成员「${member.user.name}」？`}
+                      title={`确认移除成员「${member.nickname}」？`}
                       onConfirm={() => handleRemove(member.id)}
                       okText="移除"
                       cancelText="取消"

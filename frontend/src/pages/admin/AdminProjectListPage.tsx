@@ -10,7 +10,7 @@ export default function AdminProjectListPage() {
   const [projects, setProjects] = useState<AdminProject[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
 
   const loadProjects = useCallback(async () => {
@@ -81,10 +81,10 @@ export default function AdminProjectListPage() {
       width: 120,
       render: (_: unknown, record: AdminProject) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Avatar size={20} src={record.owner.avatar} style={{ backgroundColor: '#31302e', fontSize: 9 }}>
-            {record.owner.name[0]}
+          <Avatar size={20} style={{ backgroundColor: '#31302e', fontSize: 9 }}>
+            {record.ownerName?.[0]}
           </Avatar>
-          <span style={{ fontSize: 12 }}>{record.owner.name}</span>
+          <span style={{ fontSize: 12 }}>{record.ownerName}</span>
         </div>
       ),
     },
@@ -104,8 +104,8 @@ export default function AdminProjectListPage() {
     },
     {
       title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
       width: 100,
       render: (iso: string) => (
         <span style={{ fontSize: 12, color: '#a39e98' }}>

@@ -109,7 +109,6 @@ export default function StatusHistoryTimeline({ history }: StatusHistoryTimeline
             )}
             <Avatar
               size={22}
-              src={item.user.avatar}
               style={{
                 backgroundColor: '#31302e',
                 fontSize: 10,
@@ -117,25 +116,25 @@ export default function StatusHistoryTimeline({ history }: StatusHistoryTimeline
                 marginTop: 2,
               }}
             >
-              {item.user.name[0]}
+              {item.changedBy[0]}
             </Avatar>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(0,0,0,.95)' }}>
-                  {item.user.name}
+                  {item.changedBy}
                 </span>
-                {item.old_status ? (
+                {item.oldStatus ? (
                   <>
-                    <StatusBadge status={item.old_status} />
+                    <StatusBadge status={item.oldStatus} />
                     <span style={{ fontSize: 11, color: '#a39e98' }}>→</span>
-                    <StatusBadge status={item.new_status} />
+                    <StatusBadge status={item.newStatus} />
                   </>
                 ) : (
-                  <StatusBadge status={item.new_status} />
+                  <StatusBadge status={item.newStatus} />
                 )}
               </div>
               <div style={{ fontSize: 11, color: '#a39e98', marginTop: 2 }}>
-                {formatDateTime(item.changed_at)}
+                {formatDateTime(item.changedAt)}
               </div>
             </div>
           </div>

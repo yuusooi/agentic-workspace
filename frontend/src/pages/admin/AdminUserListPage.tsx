@@ -15,7 +15,7 @@ export default function AdminUserListPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
 
   const loadUsers = useCallback(async () => {
@@ -45,11 +45,12 @@ export default function AdminUserListPage() {
     }
   };
 
-  const handleStatusToggle = async (userId: string, isActive: boolean) => {
+  const handleStatusToggle = async (userId: string, checked: boolean) => {
     try {
-      await adminApi.toggleAdminUserStatus(userId, isActive);
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, is_active: isActive } : u)));
-      message.success(isActive ? '已启用' : '已禁用');
+      const newStatus = checked ? 1 : 0;
+      await adminApi.toggleAdminUserStatus(userId, newStatus);
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)));
+      message.success(checked ? '已启用' : '已禁用');
     } catch {
       message.error('更新状态失败');
     }
@@ -58,7 +59,7 @@ export default function AdminUserListPage() {
   const handleCanCreateToggle = async (userId: string, canCreate: boolean) => {
     try {
       await adminApi.updateAdminUserCanCreateProject(userId, canCreate);
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, can_create_project: canCreate } : u)));
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, canCreateProject: canCreate } : u)));
       message.success('已更新');
     } catch {
       message.error('更新失败');
@@ -72,10 +73,10 @@ export default function AdminUserListPage() {
       render: (_: unknown, record: AdminUser) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Avatar size={28} src={record.avatar} style={{ backgroundColor: '#31302e', fontSize: 12 }}>
-            {record.name[0]}
+            {record.nickname[0]}
           </Avatar>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(0,0,0,.95)' }}>{record.name}</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(0,0,0,.95)' }}>{record.nickname}</div>
             <div style={{ fontSize: 11, color: '#a39e98' }}>@{record.username}</div>
           </div>
         </div>
@@ -105,8 +106,8 @@ export default function AdminUserListPage() {
     },
     {
       title: '创建项目',
-      dataIndex: 'can_create_project',
-      key: 'can_create_project',
+      dataIndex: 'canCreateProject',
+      key: 'canCreateProject',
       width: 90,
       render: (can: boolean, record: AdminUser) => (
         <Switch
@@ -118,13 +119,13 @@ export default function AdminUserListPage() {
     },
     {
       title: '状态',
-      dataIndex: 'is_active',
-      key: 'is_active',
+      dataIndex: 'status',
+      key: 'status',
       width: 80,
-      render: (isActive: boolean, record: AdminUser) => (
+      render: (status: number, record: AdminUser) => (
         <Switch
           size="small"
-          checked={isActive}
+          checked={status === 1}
           onChange={(v) => handleStatusToggle(record.id, v)}
         />
       ),

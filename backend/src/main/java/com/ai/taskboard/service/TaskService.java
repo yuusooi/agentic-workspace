@@ -18,7 +18,7 @@ public interface TaskService {
     TaskVO updateStatus(Long userId, Long taskId, StatusUpdateRequest request);
     void assignUsers(Long userId, Long taskId, List<Long> userIds);
     void removeAssignee(Long userId, Long taskId, Long assigneeUserId);
-    String uploadAttachment(Long userId, Long taskId, MultipartFile file);
+    AttachmentVO uploadAttachment(Long userId, Long taskId, MultipartFile file);
     void deleteAttachment(Long userId, Long attachmentId);
     CommentVO addComment(Long userId, Long taskId, CommentCreateRequest request);
     PageResult<CommentVO> listComments(Long userId, Long taskId, Integer page, Integer size);

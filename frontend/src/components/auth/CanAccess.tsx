@@ -8,7 +8,7 @@ export function isAdmin(): boolean {
 
 export function canCreateProject(): boolean {
   const user = useAuthStore.getState().user;
-  return user?.role === 'ADMIN' || user?.can_create_project === true;
+  return user?.role === 'ADMIN' || user?.canCreateProject === true;
 }
 
 export function isProjectOwnerOfCurrent(): boolean {
@@ -18,7 +18,7 @@ export function isProjectOwnerOfCurrent(): boolean {
 export function canManageProject(): boolean {
   const user = useAuthStore.getState().user;
   const project = useProjectStore.getState().currentProject;
-  return user?.role === 'ADMIN' || project?.my_role === 'PROJECT_OWNER';
+  return user?.role === 'ADMIN' || project?.myRole === 'PROJECT_OWNER';
 }
 
 interface CanAccessProps {
@@ -43,8 +43,8 @@ export function CanAccess({
 
   if (admin && user?.role !== 'ADMIN') return <>{fallback}</>;
   if (canCreate && !canCreateProject()) return <>{fallback}</>;
-  if (projectOwner && project?.my_role !== 'PROJECT_OWNER' && user?.role !== 'ADMIN') return <>{fallback}</>;
-  if (projectMember && !project?.my_role && user?.role !== 'ADMIN') return <>{fallback}</>;
+  if (projectOwner && project?.myRole !== 'PROJECT_OWNER' && user?.role !== 'ADMIN') return <>{fallback}</>;
+  if (projectMember && !project?.myRole && user?.role !== 'ADMIN') return <>{fallback}</>;
 
   return <>{children}</>;
 }
@@ -58,7 +58,7 @@ export function ShowForOwner({ children, fallback = null }: ShowForOwnerProps) {
   const user = useAuthStore((s) => s.user);
   const project = useProjectStore((s) => s.currentProject);
 
-  if (user?.role === 'ADMIN' || project?.my_role === 'PROJECT_OWNER') {
+  if (user?.role === 'ADMIN' || project?.myRole === 'PROJECT_OWNER') {
     return <>{children}</>;
   }
   return <>{fallback}</>;

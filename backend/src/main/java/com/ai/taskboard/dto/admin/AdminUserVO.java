@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Builder
 public class AdminUserVO {
     private Long id;
+    private String username;
     private String email;
     private String nickname;
     private String avatar;

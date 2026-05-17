@@ -51,6 +51,8 @@ export default function NotificationItem({ notification, onClose }: Notification
       onClose();
       if (notification.entity_type === 'PROJECT') {
         navigate(`/projects/${notification.entity_id}`);
+      } else if (notification.entity_type === 'TASK') {
+        navigate(`/projects/${notification.project_id || ''}`);
       }
     }
   };
@@ -95,7 +97,7 @@ export default function NotificationItem({ notification, onClose }: Notification
           <span style={{ fontSize: 11, color: config.color, fontWeight: 500 }}>
             {config.label}
           </span>
-          {!notification.is_read && (
+          {!notification.isRead && (
             <span
               style={{
                 width: 6,
@@ -111,7 +113,7 @@ export default function NotificationItem({ notification, onClose }: Notification
           style={{
             fontSize: 13,
             color: 'rgba(0,0,0,.95)',
-            fontWeight: notification.is_read ? 400 : 500,
+            fontWeight: notification.isRead ? 400 : 500,
             lineHeight: 1.5,
             overflow: 'hidden',
             textOverflow: 'ellipsis',

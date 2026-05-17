@@ -14,6 +14,7 @@ import com.ai.taskboard.dto.task.TaskVO.TagInfo;
 import com.ai.taskboard.entity.*;
 import com.ai.taskboard.mapper.*;
 import com.ai.taskboard.service.NotificationService;
+import com.ai.taskboard.service.OperationLogService;
 import com.ai.taskboard.service.TaskService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -48,6 +49,7 @@ public class TaskServiceImpl implements TaskService {
     private final UserMapper userMapper;
     private final BoardColumnMapper boardColumnMapper;
     private final NotificationService notificationService;
+    private final OperationLogService operationLogService;
 
     @Value("${file.upload-path:./uploads}")
     private String uploadPath;
@@ -113,10 +115,13 @@ public class TaskServiceImpl implements TaskService {
                 .columnName(column != null ? column.getName() : null)
                 .title(task.getTitle())
                 .description(task.getDescription())
+                .aiSummary(task.getAiSummary())
                 .priority(task.getPriority())
                 .status(task.getStatus())
                 .sortOrder(task.getSortOrder())
                 .dueDate(task.getDueDate())
+                .estimatedHours(task.getEstimatedHours())
+                .actualHours(task.getActualHours())
                 .creatorId(task.getCreatorId())
                 .creatorName(creator != null ? creator.getNickname() : null)
                 .version(task.getVersion())
@@ -146,6 +151,7 @@ public class TaskServiceImpl implements TaskService {
         task.setDueDate(request.getDueDate());
         task.setCreatorId(userId);
         taskMapper.insert(task);
+        operationLogService.log(userId, "TASK", "CREATE", task.getId(), "创建任务：" + task.getTitle(), null);
 
         if (request.getAssigneeIds() != null) {
             for (Long assigneeId : request.getAssigneeIds()) {
@@ -185,13 +191,35 @@ public class TaskServiceImpl implements TaskService {
         if (request.getPriority() != null) task.setPriority(request.getPriority());
         if (request.getDueDate() != null) task.setDueDate(request.getDueDate());
         if (request.getSortOrder() != null) task.setSortOrder(request.getSortOrder());
+        if (request.getEstimatedHours() != null) task.setEstimatedHours(request.getEstimatedHours());
+        if (request.getActualHours() != null) task.setActualHours(request.getActualHours());
+
+        if (request.getStatus() != null && !request.getStatus().equals(task.getStatus())) {
+            String oldStatus = task.getStatus();
+            task.setStatus(request.getStatus());
+            TaskStatusHistory history = new TaskStatusHistory();
+            history.setTaskId(taskId);
+            history.setOldStatus(oldStatus);
+            history.setNewStatus(request.getStatus());
+            history.setChangedBy(userId);
+            history.setChangedAt(LocalDateTime.now());
+            taskStatusHistoryMapper.insert(history);
+            operationLogService.log(userId, "TASK", "STATUS_CHANGE", taskId,
+                    "任务状态从 " + oldStatus + " 变更为 " + request.getStatus(), null);
+        }
 
         if (request.getColumnId() != null) {
             task.setColumnId(request.getColumnId());
-            BoardColumn column = boardColumnMapper.selectById(request.getColumnId());
-            if (column != null) {
-                task.setStatus(column.getStatusMapping());
+            if (request.getStatus() == null) {
+                BoardColumn column = boardColumnMapper.selectById(request.getColumnId());
+                if (column != null) {
+                    task.setStatus(column.getStatusMapping());
+                }
             }
+        }
+
+        if (request.getVersion() != null) {
+            task.setVersion(request.getVersion());
         }
 
         taskMapper.updateById(task);
@@ -208,6 +236,12 @@ public class TaskServiceImpl implements TaskService {
         if (!isProjectOwnerOrAdmin(userId, task.getProjectId())) {
             throw new BusinessException(ResultCode.FORBIDDEN);
         }
+        operationLogService.log(userId, "TASK", "DELETE", taskId, "删除任务：" + task.getTitle(), null);
+        taskAssigneeMapper.delete(new LambdaQueryWrapper<TaskAssignee>().eq(TaskAssignee::getTaskId, taskId));
+        taskTagMapper.delete(new LambdaQueryWrapper<TaskTag>().eq(TaskTag::getTaskId, taskId));
+        attachmentMapper.delete(new LambdaQueryWrapper<Attachment>().eq(Attachment::getTaskId, taskId));
+        commentMapper.delete(new LambdaQueryWrapper<Comment>().eq(Comment::getTaskId, taskId));
+        taskStatusHistoryMapper.delete(new LambdaQueryWrapper<TaskStatusHistory>().eq(TaskStatusHistory::getTaskId, taskId));
         taskMapper.deleteById(taskId);
     }
 
@@ -281,6 +315,7 @@ public class TaskServiceImpl implements TaskService {
         history.setChangedBy(userId);
         history.setChangedAt(LocalDateTime.now());
         taskStatusHistoryMapper.insert(history);
+        operationLogService.log(userId, "TASK", "STATUS_CHANGE", taskId, "任务状态从 " + oldStatus + " 变更为 " + request.getStatus(), null);
 
         List<TaskAssignee> assignees = taskAssigneeMapper.selectList(
                 new LambdaQueryWrapper<TaskAssignee>().eq(TaskAssignee::getTaskId, taskId));
@@ -353,7 +388,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public String uploadAttachment(Long userId, Long taskId, MultipartFile file) {
+    public AttachmentVO uploadAttachment(Long userId, Long taskId, MultipartFile file) {
         Task task = taskMapper.selectById(taskId);
         if (task == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
@@ -389,7 +424,16 @@ public class TaskServiceImpl implements TaskService {
         attachment.setUploaderId(userId);
         attachmentMapper.insert(attachment);
 
-        return attachment.getFilePath();
+        return AttachmentVO.builder()
+                .id(attachment.getId())
+                .taskId(attachment.getTaskId())
+                .fileName(attachment.getFileName())
+                .filePath(attachment.getFilePath())
+                .fileSize(attachment.getFileSize())
+                .fileType(attachment.getFileType())
+                .uploaderId(attachment.getUploaderId())
+                .createdAt(attachment.getCreatedAt())
+                .build();
     }
 
     @Override
@@ -428,12 +472,21 @@ public class TaskServiceImpl implements TaskService {
         comment.setParentId(request.getParentId());
         commentMapper.insert(comment);
 
-        Pattern pattern = Pattern.compile("@(\\S+)");
+        try {
+            String mentionsJson = parseMentions(comment.getContent());
+            if (mentionsJson != null) {
+                comment.setMentions(mentionsJson);
+                commentMapper.updateById(comment);
+            }
+        } catch (Exception ignored) {
+        }
+
+        Pattern pattern = Pattern.compile("@([a-zA-Z][a-zA-Z0-9_-]{2,19})");
         Matcher matcher = pattern.matcher(request.getContent());
         while (matcher.find()) {
             String mentionName = matcher.group(1);
             User mentionedUser = userMapper.selectOne(
-                    new LambdaQueryWrapper<User>().eq(User::getNickname, mentionName));
+                    new LambdaQueryWrapper<User>().eq(User::getUsername, mentionName));
             if (mentionedUser != null) {
                 notificationService.sendNotification(
                         mentionedUser.getId(),
@@ -550,5 +603,30 @@ public class TaskServiceImpl implements TaskService {
                         .orderByDesc(TaskStatusHistory::getChangedAt));
 
         return new PageResult<>(historyPage.getRecords(), historyPage.getTotal(), (int) historyPage.getPages());
+    }
+
+    private String parseMentions(String content) {
+        if (content == null || !content.contains("@")) {
+            return null;
+        }
+        Pattern pattern = Pattern.compile("@([a-zA-Z][a-zA-Z0-9_-]{2,19})");
+        Matcher matcher = pattern.matcher(content);
+        List<Long> mentionedUserIds = new ArrayList<>();
+        while (matcher.find()) {
+            String username = matcher.group(1);
+            User mentionedUser = userMapper.selectOne(
+                    new LambdaQueryWrapper<User>().eq(User::getUsername, username));
+            if (mentionedUser != null) {
+                mentionedUserIds.add(mentionedUser.getId());
+            }
+        }
+        if (mentionedUserIds.isEmpty()) {
+            return null;
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(mentionedUserIds);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

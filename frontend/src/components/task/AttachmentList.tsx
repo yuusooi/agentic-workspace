@@ -32,7 +32,7 @@ function formatDate(iso: string): string {
 }
 
 export default function AttachmentList({ attachments, onDelete, editable = true, currentUserId, isAdminOrOwner }: AttachmentListProps) {
-  if (attachments.length === 0) return null;
+  if (!attachments || attachments.length === 0) return null;
 
   const handleDelete = async (id: string) => {
     try {
@@ -59,9 +59,9 @@ export default function AttachmentList({ attachments, onDelete, editable = true,
             fontSize: 13,
           }}
         >
-          {getFileIcon(att.file_type)}
+          {getFileIcon(att.fileType)}
           <a
-            href={att.file_url}
+            href={att.filePath}
             target="_blank"
             rel="noopener noreferrer"
             download
@@ -75,15 +75,15 @@ export default function AttachmentList({ attachments, onDelete, editable = true,
               textDecoration: 'none',
             }}
           >
-            {att.file_name}
+            {att.fileName}
           </a>
           <span style={{ fontSize: 11, color: '#a39e98', flexShrink: 0 }}>
-            {formatFileSize(att.file_size)}
+            {formatFileSize(att.fileSize)}
           </span>
           <span style={{ fontSize: 11, color: '#a39e98', flexShrink: 0 }}>
-            {formatDate(att.created_at)}
+            {formatDate(att.createdAt)}
           </span>
-          {editable && (isAdminOrOwner || att.uploaded_by === currentUserId) && (
+          {editable && (isAdminOrOwner || String(att.uploaderId) === String(currentUserId)) && (
             <Popconfirm
               title="确认删除此附件？"
               onConfirm={() => handleDelete(att.id)}

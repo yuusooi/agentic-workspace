@@ -181,7 +181,7 @@ export default function KanbanPage() {
     return columns.map((col) => ({
       ...col,
       tasks: col.tasks.filter((t) =>
-        t.assignees.some((a) => a.user_id === filteredMemberId),
+        t.assignees.some((a) => a.userId === filteredMemberId),
       ),
     }));
   };
@@ -202,7 +202,7 @@ export default function KanbanPage() {
         <Button
           type="text"
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(`/projects/${projectId}`)}
         >
           返回
         </Button>

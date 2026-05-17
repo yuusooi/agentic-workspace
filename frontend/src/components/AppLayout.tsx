@@ -7,6 +7,7 @@ import {
   LogoutOutlined,
   SettingOutlined,
   SafetyCertificateOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth-store';
 import NotificationBell from '@/components/notification/NotificationBell';
@@ -15,6 +16,7 @@ import AICommandPanel from '@/components/ai/AICommandPanel';
 const navItems = [
   { path: '/projects', label: '我的项目', icon: <AppstoreOutlined /> },
   { path: '/projects/public', label: '公开项目', icon: <GlobalOutlined /> },
+  { path: '/ai', label: 'AI 智能助手', icon: <RobotOutlined /> },
 ];
 
 export default function AppLayout() {
@@ -203,11 +205,11 @@ export default function AppLayout() {
                 flexShrink: 0,
               }}
             >
-              {user?.name?.[0] || '?'}
+              {user?.nickname?.[0] || '?'}
             </Avatar>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(0,0,0,.95)' }}>
-                {user?.name || '用户'}
+                {user?.nickname || '用户'}
               </div>
             </div>
             <Tooltip title="设置">

@@ -15,8 +15,6 @@ export interface TaskFilter {
   priority?: TaskPriority;
   assignee_id?: string;
   keyword?: string;
-  overdue?: boolean;
-  sort?: 'deadline' | 'priority' | 'created_at';
 }
 
 interface TaskState {
@@ -69,7 +67,7 @@ export const useTaskStore = create<TaskState>((set) => ({
   tasks: [],
   totalElements: 0,
   totalPages: 0,
-  currentPage: 0,
+  currentPage: 1,
   pageSize: 20,
   loading: false,
 
@@ -87,7 +85,7 @@ export const useTaskStore = create<TaskState>((set) => ({
 
   setPage: (page) => set({ currentPage: page }),
 
-  setPageSize: (size) => set({ pageSize: size, currentPage: 0 }),
+  setPageSize: (size) => set({ pageSize: size, currentPage: 1 }),
 
   setLoading: (loading) => set({ loading }),
 
@@ -104,10 +102,10 @@ export const useTaskStore = create<TaskState>((set) => ({
   setFilter: (filter) =>
     set((state) => ({
       filter: { ...state.filter, ...filter },
-      currentPage: 0,
+      currentPage: 1,
     })),
 
-  resetFilter: () => set({ filter: { ...defaultFilter }, currentPage: 0 }),
+  resetFilter: () => set({ filter: { ...defaultFilter }, currentPage: 1 }),
 
   setProjectTags: (tags) => set({ projectTags: tags }),
 
@@ -147,7 +145,5 @@ export function buildQueryParams(state: {
   if (filter.priority) params.priority = filter.priority;
   if (filter.assignee_id) params.assignee_id = filter.assignee_id;
   if (filter.keyword) params.keyword = filter.keyword;
-  if (filter.overdue) params.overdue = true;
-  if (filter.sort) params.sort = filter.sort;
   return params;
 }

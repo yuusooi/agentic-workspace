@@ -29,7 +29,7 @@ export default function TaskCard({ task, tagIndex, onClick }: TaskCardProps) {
     isDragging,
   } = useSortable({
     id: task.id,
-    data: { type: 'task' as const, task, sourceColumnId: task.column_id },
+    data: { type: 'task' as const, task, sourceColumnId: task.columnId },
   });
 
   const style = {
@@ -102,7 +102,7 @@ export default function TaskCard({ task, tagIndex, onClick }: TaskCardProps) {
                 className="mini-av"
                 style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
               >
-                {a.name[0]}
+                {a.nickname[0]}
               </span>
             ))}
           </div>

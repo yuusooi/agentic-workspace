@@ -6,7 +6,7 @@ import * as aiApi from '@/lib/ai-api';
 export default function AIChatHistory() {
   const [conversations, setConversations] = useState<aiApi.AIChatSession[]>([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<aiApi.AIChatMessage[]>([]);
@@ -29,7 +29,7 @@ export default function AIChatHistory() {
     loadConversations();
   }, [loadConversations]);
 
-  const handleViewDetail = async (id: string) => {
+  const handleViewDetail = async (id: number) => {
     setDetailOpen(true);
     setLoadingDetail(true);
     try {

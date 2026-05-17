@@ -44,7 +44,7 @@ export default function TaskList() {
     setLoading(true);
     try {
       const params = buildQueryParams({ filter, currentPage, pageSize });
-      const res = await taskApi.getTasks(projectId, params);
+      const res = await taskApi.getTasks({ ...params, projectId });
       setTasks(res.content, res.totalElements, res.totalPages);
     } catch {
       message.error('加载任务列表失败');
@@ -183,7 +183,7 @@ export default function TaskList() {
                 border: '2px solid #fff',
               }}
             >
-              {a.name[0]}
+              {a.nickname[0]}
             </Avatar>
           ))}
           {assignees.length > 3 && (

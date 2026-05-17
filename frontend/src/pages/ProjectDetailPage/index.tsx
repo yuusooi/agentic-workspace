@@ -7,6 +7,9 @@ import {
   TeamOutlined,
   PlusOutlined,
   DeleteOutlined,
+  RobotOutlined,
+  BookOutlined,
+  HeartOutlined,
 } from '@ant-design/icons';
 import { getProjectDetail, updateProject, deleteProject, getProjectMembers, type ProjectListItem } from '@/lib/project-api';
 import { useProjectStore } from '@/stores/project-store';
@@ -15,6 +18,8 @@ import { useTaskStore } from '@/stores/task-store';
 import TaskList from '@/components/task/TaskList';
 import TaskFilterBar from '@/components/task/TaskFilter';
 import TaskDrawer from '@/components/task/TaskDrawer';
+import ProjectHealthPanel from '@/components/ai/ProjectHealthPanel';
+import MemberDrawer from '@/components/member/MemberDrawer';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +33,8 @@ export default function ProjectDetailPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ name: '', description: '', visibility: 'PRIVATE' as 'PUBLIC' | 'PRIVATE' });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [healthOpen, setHealthOpen] = useState(false);
+  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
 
   const fetchProject = useCallback(async () => {
     if (!id) return;
@@ -41,16 +48,16 @@ export default function ProjectDetailPage() {
         description: data.description,
         icon: data.icon,
         visibility: data.visibility,
-        created_by: data.created_by,
-        created_at: data.created_at,
-        my_role: data.my_role,
-        owner: data.owner,
+        ownerId: data.ownerId,
+        createdAt: data.createdAt,
+        myRole: data.myRole,
+        ownerName: data.ownerName,
       });
       setSettingsForm({ name: data.name, description: data.description, visibility: data.visibility });
 
       try {
         const memberList = await getProjectMembers(id);
-        setMembers(memberList);
+        setMembers(memberList.content || []);
       } catch {
         // members load failure is non-critical
       }
@@ -91,7 +98,7 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const canManage = user?.role === 'ADMIN' || project?.my_role === 'PROJECT_OWNER';
+  const canManage = user?.role === 'ADMIN' || project?.myRole === 'PROJECT_OWNER';
 
   const handleSaveSettings = async () => {
     if (!project) return;
@@ -216,13 +223,13 @@ export default function ProjectDetailPage() {
                     size={20}
                     style={{ backgroundColor: '#31302e', fontSize: 10 }}
                   >
-                    {project.owner?.name?.[0] || '?'}
+                    {project.ownerName?.[0] || '?'}
                   </Avatar>
-                  {project.owner?.name || '未知'}
+                  {project.ownerName || '未知'}
                 </div>
               </Descriptions.Item>
               <Descriptions.Item label="创建时间">
-                {new Date(project.created_at).toLocaleDateString('zh-CN')}
+                {new Date(project.createdAt).toLocaleDateString('zh-CN')}
               </Descriptions.Item>
             </Descriptions>
           </div>
@@ -238,7 +245,28 @@ export default function ProjectDetailPage() {
               title="成员管理"
               description={`${canManage ? '邀请、管理项目成员' : '查看项目成员'}`}
               color="#0075de"
-              onClick={() => navigate(`/projects/${project.id}/kanban`)}
+              onClick={() => setMemberDrawerOpen(true)}
+            />
+            <ActionCard
+              icon={<RobotOutlined style={{ fontSize: 20 }} />}
+              title="自动化规则"
+              description="配置任务自动化规则"
+              color="#722ed1"
+              onClick={() => navigate(`/projects/${project.id}/automation`)}
+            />
+            <ActionCard
+              icon={<BookOutlined style={{ fontSize: 20 }} />}
+              title="知识库"
+              description="项目文档与知识管理"
+              color="#13c2c2"
+              onClick={() => navigate(`/projects/${project.id}/knowledge`)}
+            />
+            <ActionCard
+              icon={<HeartOutlined style={{ fontSize: 20 }} />}
+              title="项目健康度"
+              description="AI分析项目健康状况"
+              color="#eb2f96"
+              onClick={() => setHealthOpen(true)}
             />
           </div>
 
@@ -269,26 +297,22 @@ export default function ProjectDetailPage() {
                 onClick={() => {
                   openDrawer('create', {
                     id: '',
-                    project_id: project.id,
-                    column_id: '',
+                    projectId: project.id,
+                    columnId: '',
+                    columnName: '',
                     title: '',
                     description: '',
-                    ai_summary: '',
                     status: 'TODO',
                     priority: 'MEDIUM',
-                    deadline: null,
-                    estimated_hours: null,
-                    actual_hours: null,
-                    position: 0,
+                    dueDate: null,
+                    sortOrder: 0,
+                    creatorId: '',
+                    creatorName: '',
                     version: 0,
-                    created_by: '',
-                    created_at: '',
-                    updated_at: '',
+                    createdAt: '',
+                    updatedAt: '',
                     tags: [],
                     assignees: [],
-                    attachments: [],
-                    comments: [],
-                    status_history: [],
                   });
                 }}
               >
@@ -301,6 +325,12 @@ export default function ProjectDetailPage() {
         </div>
       </div>
       <TaskDrawer />
+      <MemberDrawer
+        open={memberDrawerOpen}
+        onClose={() => setMemberDrawerOpen(false)}
+        projectId={project.id}
+        myRole={project.myRole}
+      />
 
       <Modal
         title="项目设置"
@@ -355,6 +385,14 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       </Modal>
+
+      {id && (
+        <ProjectHealthPanel
+          open={healthOpen}
+          onClose={() => setHealthOpen(false)}
+          projectId={id}
+        />
+      )}
     </>
   );
 }

@@ -17,11 +17,14 @@ export default function UserSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [name, setName] = useState(user?.name || '');
+  const [nickname, setNickname] = useState(user?.nickname || '');
   const [preferences, setPreferences] = useState<userApi.UserPreferences>({
-    email_notification: true,
-    deadline_reminder: true,
-    mention_notification: true,
+    emailNotification: true as unknown as number,
+    deadlineReminder: true as unknown as number,
+    mentionNotify: true as unknown as number,
+    statusChangeNotify: true as unknown as number,
+    overdueWarning: true as unknown as number,
+    memberChangeNotify: true as unknown as number,
   });
 
   useEffect(() => {
@@ -32,8 +35,9 @@ export default function UserSettingsPage() {
     setLoading(true);
     try {
       const profile = await userApi.getUserProfile();
-      setName(profile.name);
-      setPreferences(profile.preferences);
+      setNickname(profile.nickname);
+      const prefs = await userApi.getPreferences();
+      setPreferences(prefs);
     } catch {
       // use defaults
     } finally {
@@ -42,15 +46,15 @@ export default function UserSettingsPage() {
   };
 
   const handleSaveName = async () => {
-    if (!name.trim()) {
+    if (!nickname.trim()) {
       message.error('名称不能为空');
       return;
     }
     setSavingName(true);
     try {
-      await userApi.updateUserProfile({ name: name.trim() });
+      await userApi.updateUserProfile({ nickname: nickname.trim() });
       if (user && accessToken && refreshToken) {
-        setAuth({ ...user, name: name.trim() }, accessToken, refreshToken);
+        setAuth({ ...user, nickname: nickname.trim() }, accessToken, refreshToken);
       }
       message.success('名称已更新');
     } catch {
@@ -84,7 +88,7 @@ export default function UserSettingsPage() {
     return false;
   };
 
-  const handlePreferenceChange = async (key: keyof userApi.UserPreferences, value: boolean) => {
+  const handlePreferenceChange = async (key: keyof userApi.UserPreferences, value: number) => {
     const newPrefs = { ...preferences, [key]: value };
     setPreferences(newPrefs);
     try {
@@ -139,7 +143,7 @@ export default function UserSettingsPage() {
                     fontWeight: 600,
                   }}
                 >
-                  {user?.name?.[0] || '?'}
+                  {user?.nickname?.[0] || '?'}
                 </Avatar>
                 <div
                   style={{
@@ -162,7 +166,7 @@ export default function UserSettingsPage() {
             </Upload>
             <div>
               <div style={{ fontSize: 18, fontWeight: 600, color: 'rgba(0,0,0,.95)' }}>
-                {user?.name || '用户'}
+                {user?.nickname || '用户'}
               </div>
               <div style={{ fontSize: 13, color: '#a39e98' }}>
                 @{user?.username || 'username'}
@@ -181,8 +185,8 @@ export default function UserSettingsPage() {
                 显示名称
               </label>
               <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
                 maxLength={30}
                 placeholder="输入名称"
               />
@@ -191,7 +195,7 @@ export default function UserSettingsPage() {
               type="primary"
               onClick={handleSaveName}
               loading={savingName}
-              disabled={name === user?.name}
+              disabled={nickname === user?.nickname}
             >
               保存
             </Button>
@@ -217,8 +221,8 @@ export default function UserSettingsPage() {
                 </div>
               </div>
               <Switch
-                checked={preferences.email_notification}
-                onChange={(v) => handlePreferenceChange('email_notification', v)}
+                checked={!!preferences.emailNotification}
+                onChange={(v) => handlePreferenceChange('emailNotification', v as unknown as number)}
               />
             </div>
 
@@ -234,8 +238,8 @@ export default function UserSettingsPage() {
                 </div>
               </div>
               <Switch
-                checked={preferences.deadline_reminder}
-                onChange={(v) => handlePreferenceChange('deadline_reminder', v)}
+                checked={!!preferences.deadlineReminder}
+                onChange={(v) => handlePreferenceChange('deadlineReminder', v as unknown as number)}
               />
             </div>
 
@@ -251,8 +255,8 @@ export default function UserSettingsPage() {
                 </div>
               </div>
               <Switch
-                checked={preferences.mention_notification}
-                onChange={(v) => handlePreferenceChange('mention_notification', v)}
+                checked={!!preferences.mentionNotify}
+                onChange={(v) => handlePreferenceChange('mentionNotify', v as unknown as number)}
               />
             </div>
           </div>

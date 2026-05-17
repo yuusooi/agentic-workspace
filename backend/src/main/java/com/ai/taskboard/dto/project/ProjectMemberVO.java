@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class ProjectMemberVO {
     private Long id;
     private Long userId;
+    private String username;
     private String email;
     private String nickname;
     private String avatar;

@@ -14,9 +14,9 @@ spring:
 
   data:
     redis:
-      host: 192.168.195.132
+      host: localhost
       port: 6379
-      password:
+      password: 123456
       database: 0
       timeout: 5000ms
       lettuce:
@@ -29,21 +29,36 @@ spring:
   mail:
     host: smtp.qq.com
     port: 587
-    username: your-email@qq.com
-    password: your-smtp-password
+    username: 3117965072@qq.com
+    password: fqdsrrddsjlsdhbj
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 logging:
   level:
     com.ai.taskboard: debug
     com.ai.taskboard.mapper: debug
 
+file:
+  upload-path: c:/Users/ly888/agentic-workspace/backend/uploads
+
 ai:
   llm:
     base-url: https://api.moonshot.cn/v1
-    api-key: sk-LLHiDkqI7fqXLwooasTYNEnT5O5cTDrs5pEs3ccdwOMpgKS1
+    api-key: sk-4tSLEPv7zSNxA4PzMCgWUJ8WlO3KoX7d4d6smmT9Jw3VA4Gi
     model: moonshot-v1-auto
     max-tokens: 4096
     temperature: 0.7
+  embedding:
+    enabled: true
+    provider: moonshot
+    base-url: https://api.moonshot.cn/v1
+    api-key: sk-4tSLEPv7zSNxA4PzMCgWUJ8WlO3KoX7d4d6smmT9Jw3VA4Gi
+    model: text-embedding-v1
   sse:
     timeout: 300000
     max-concurrent-per-user: 3
@@ -51,3 +66,13 @@ ai:
     max-concurrent-global: 100
   confirmation:
     ttl-minutes: 30
+  knowledge:
+    default-chunk-size: 2000
+    default-chunk-overlap: 200
+    default-top-k: 5
+    default-similarity-threshold: 0.5
+    max-chunks-per-document: 50
+  automation:
+    min-interval-seconds: 30
+    max-actions-per-hour: 20
+    max-consecutive-failures: 3

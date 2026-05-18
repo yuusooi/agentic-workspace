@@ -6,7 +6,7 @@ export interface AdminUser {
   nickname: string;
   email: string;
   role: 'ADMIN' | 'USER';
-  canCreateProject: boolean;
+  canCreateProject: number;
   status: number;
   avatar: string | null;
   loginFailCount: number;
@@ -51,10 +51,10 @@ export async function toggleAdminUserStatus(
 
 export async function updateAdminUserCanCreateProject(
   userId: string,
-  canCreateProject: number,
+  canCreateProject: boolean,
 ): Promise<AdminUser> {
   const res = await apiClient.put(`/admin/users/${userId}/create-project-permission`, null, {
-    params: { canCreateProject },
+    params: { canCreateProject: canCreateProject ? 1 : 0 },
   });
   return res.data;
 }

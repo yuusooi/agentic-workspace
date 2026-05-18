@@ -66,9 +66,7 @@ export async function getDocuments(kbId: string): Promise<KnowledgeDocument[]> {
 export async function uploadDocument(kbId: string, file: File): Promise<KnowledgeDocument> {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await apiClient.post(`/knowledge-bases/${kbId}/documents`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const res = await apiClient.post(`/knowledge-bases/${kbId}/documents`, formData);
   return res.data;
 }
 
@@ -81,13 +79,21 @@ export async function getDocumentChunks(docId: string): Promise<DocumentChunk[]>
   return res.data;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export async function askKnowledgeBase(
   kbId: string,
   question: string,
   onEvent: (event: { type: string; content?: string; references?: unknown }) => void,
   signal?: AbortSignal,
+  history?: ChatMessage[],
 ): Promise<void> {
   const token = useAuthStore.getState().accessToken;
+  console.log('askKnowledgeBase - kbId:', kbId, 'token:', token ? 'exists' : 'missing');
+  
   const res = await fetch(`/api/knowledge-bases/${kbId}/ask`, {
     method: 'POST',
     headers: {
@@ -95,19 +101,36 @@ export async function askKnowledgeBase(
       Authorization: `Bearer ${token}`,
       Accept: 'text/event-stream',
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, history }),
     signal,
   });
+  
+  console.log('askKnowledgeBase - response status:', res.status);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`请求失败: ${res.status} ${errorText}`);
+  }
+  
   if (!res.body) throw new Error('No response body');
 
   const reader = res.body.getReader();
   const parser = createParser({
     onEvent(event) {
-      try {
-        const data = JSON.parse(event.data || '{}');
-        onEvent({ type: event.event || 'answer', ...data });
-      } catch {
-        // skip malformed JSON
+      const eventType = event.event || 'message';
+      if (eventType === 'message') {
+        onEvent({ type: 'message', content: event.data });
+      } else if (eventType === 'done') {
+        onEvent({ type: 'done' });
+      } else if (eventType === 'error') {
+        onEvent({ type: 'error', content: event.data });
+      } else if (eventType === 'references') {
+        try {
+          const refs = JSON.parse(event.data);
+          onEvent({ type: 'references', references: refs });
+        } catch {
+          onEvent({ type: 'references', references: [] });
+        }
       }
     },
   });

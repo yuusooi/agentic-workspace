@@ -40,6 +40,8 @@ export default function AppLayout() {
 
   const isActive = (path: string) => {
     if (path === '/projects') return location.pathname === '/projects';
+    if (path === '/admin/users') return location.pathname.startsWith('/admin/users');
+    if (path === '/admin/projects') return location.pathname.startsWith('/admin/projects');
     return location.pathname.startsWith(path);
   };
 
@@ -49,9 +51,19 @@ export default function AppLayout() {
   };
 
   return (
-    <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
+    <>
+      <style>{`
+        *::-webkit-scrollbar {
+          display: none !important;
+        }
+        * {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `}</style>
+      <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
       {/* Sidebar */}
-      <aside style={{
+      <aside className="app-layout-sidebar" style={{
         width: 240,
         minWidth: 240,
         background: '#f6f5f4',
@@ -59,6 +71,8 @@ export default function AppLayout() {
         display: 'flex',
         flexDirection: 'column',
         zIndex: 100,
+        overflowY: 'auto',
+        overflowX: 'hidden',
       }}>
         {/* Logo */}
         <div style={{
@@ -148,12 +162,12 @@ export default function AppLayout() {
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontSize: 14,
-                color: isActive('/admin') ? '#0075de' : (hoveredNav === '/admin/users' ? 'rgba(0,0,0,.95)' : '#615d59'),
-                background: isActive('/admin') ? 'rgba(0,117,222,.08)' : 'transparent',
+                color: isActive('/admin/users') ? '#0075de' : (hoveredNav === '/admin/users' ? 'rgba(0,0,0,.95)' : '#615d59'),
+                background: isActive('/admin/users') ? 'rgba(0,117,222,.08)' : 'transparent',
                 transition: 'all .1s',
               }}
             >
-              <span style={{ fontSize: 16, opacity: isActive('/admin') ? 1 : 0.7 }}>
+              <span style={{ fontSize: 16, opacity: isActive('/admin/users') ? 1 : 0.7 }}>
                 <SafetyCertificateOutlined />
               </span>
               用户管理
@@ -236,16 +250,20 @@ export default function AppLayout() {
       </aside>
 
       {/* Main area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minWidth: 0,
-        overflow: 'hidden',
-      }}>
+      <div
+        className="app-layout-content"
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          overflow: 'hidden',
+        }}
+      >
         <Outlet />
       </div>
       <AICommandPanel open={aiPanelOpen} onClose={() => setAiPanelOpen(false)} />
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,15 +1,13 @@
 import { useState } from 'react';
-import { RobotOutlined, HistoryOutlined, AuditOutlined } from '@ant-design/icons';
+import { RobotOutlined, HistoryOutlined } from '@ant-design/icons';
 import AIChatPanel from './AIChatPanel';
 import AIChatHistory from './AIChatHistory';
-import AIOperationLogs from './AIOperationLogs';
 
-type TabKey = 'chat' | 'history' | 'logs';
+type TabKey = 'chat' | 'history';
 
 const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'chat', label: '智能对话', icon: <RobotOutlined /> },
   { key: 'history', label: '对话历史', icon: <HistoryOutlined /> },
-  { key: 'logs', label: '操作日志', icon: <AuditOutlined /> },
 ];
 
 export default function AIPage() {
@@ -77,7 +75,6 @@ export default function AIPage() {
       <div style={{ flex: 1, overflow: 'hidden' }}>
         {activeTab === 'chat' && <AIChatPanel />}
         {activeTab === 'history' && <AIChatHistory />}
-        {activeTab === 'logs' && <AIOperationLogs />}
       </div>
     </div>
   );

@@ -46,6 +46,7 @@ public class AiServiceImpl implements AiService {
     private final TaskMetricsMapper taskMetricsMapper;
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final BoardColumnMapper boardColumnMapper;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final WebClient aiWebClient;
@@ -973,8 +974,17 @@ public class AiServiceImpl implements AiService {
                 if (task == null) return Map.of("error", "任务不存在");
 
                 task.setStatus(status);
+
+                BoardColumn targetColumn = boardColumnMapper.selectOne(
+                        new LambdaQueryWrapper<BoardColumn>()
+                                .eq(BoardColumn::getProjectId, task.getProjectId())
+                                .eq(BoardColumn::getStatusMapping, status));
+                if (targetColumn != null) {
+                    task.setColumnId(targetColumn.getId());
+                }
+
                 taskMapper.updateById(task);
-                return Map.of("success", true, "task_id", taskId, "status", status);
+                return Map.of("success", true, "task_id", taskId, "status", status, "column_updated", targetColumn != null);
             }
 
             case "assign_task": {
@@ -1027,10 +1037,101 @@ public class AiServiceImpl implements AiService {
 
             case "suggest_tags":
             case "estimate_effort":
-            case "recommend_assignee":
             case "generate_summary":
-            case "analyze_project_health":
                 return Map.of("message", "请使用对应的专用API接口");
+
+            case "recommend_assignee": {
+                Long taskId = args.get("task_id").asLong();
+                Task task = taskMapper.selectById(taskId);
+                if (task == null) return Map.of("error", "任务不存在");
+
+                Long projectId = task.getProjectId();
+                List<ProjectMember> members = projectMemberMapper.selectList(
+                        new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getProjectId, projectId));
+
+                if (members.isEmpty()) return Map.of("error", "项目暂无成员");
+
+                List<Map<String, Object>> candidates = new ArrayList<>();
+                for (ProjectMember member : members) {
+                    User user = userMapper.selectById(member.getUserId());
+                    if (user == null) continue;
+
+                    Long assignedCount = taskAssigneeMapper.selectCount(
+                            new LambdaQueryWrapper<TaskAssignee>().eq(TaskAssignee::getUserId, member.getUserId()));
+
+                    List<UserSkill> skills = userSkillMapper.selectList(
+                            new LambdaQueryWrapper<UserSkill>().eq(UserSkill::getUserId, member.getUserId()));
+                    String skillTags = skills.stream().map(UserSkill::getSkillTag).collect(Collectors.joining(", "));
+
+                    int score = 100 - assignedCount.intValue() * 10;
+                    if (score < 10) score = 10;
+
+                    candidates.add(Map.of(
+                            "user_id", member.getUserId(),
+                            "nickname", user.getNickname() != null ? user.getNickname() : user.getUsername(),
+                            "role", member.getRole() != null ? member.getRole() : "member",
+                            "assigned_count", assignedCount,
+                            "skills", skillTags,
+                            "score", score
+                    ));
+                }
+
+                candidates.sort((a, b) -> (Integer) b.get("score") - (Integer) a.get("score"));
+                if (candidates.size() > 5) candidates = candidates.subList(0, 5);
+
+                return Map.of("task_id", taskId, "recommendations", candidates);
+            }
+
+            case "analyze_project_health": {
+                Long projectId = args.get("project_id").asLong();
+                Project project = projectMapper.selectById(projectId);
+                if (project == null) return Map.of("error", "项目不存在");
+
+                List<Task> allTasks = taskMapper.selectList(
+                        new LambdaQueryWrapper<Task>().eq(Task::getProjectId, projectId));
+
+                int totalTasks = allTasks.size();
+                if (totalTasks == 0) {
+                    return Map.of("project_id", projectId, "health_score", 100, "message", "项目暂无任务");
+                }
+
+                long todoCount = allTasks.stream().filter(t -> "TODO".equals(t.getStatus())).count();
+                long inProgressCount = allTasks.stream().filter(t -> "IN_PROGRESS".equals(t.getStatus())).count();
+                long doneCount = allTasks.stream().filter(t -> "DONE".equals(t.getStatus())).count();
+                long overdueCount = allTasks.stream().filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()) && !"DONE".equals(t.getStatus())).count();
+                long highPriorityCount = allTasks.stream().filter(t -> "HIGH".equals(t.getPriority()) || "URGENT".equals(t.getPriority())).count();
+
+                int completionRate = (int) (doneCount * 100 / totalTasks);
+                int overdueRate = (int) (overdueCount * 100 / totalTasks);
+
+                int healthScore = 100;
+                healthScore -= overdueRate;
+                healthScore -= (int) (highPriorityCount * 2);
+                if (healthScore < 0) healthScore = 0;
+
+                List<Map<String, Object>> risks = new ArrayList<>();
+                if (overdueRate > 20) {
+                    risks.add(Map.of("type", "overdue", "severity", "high", "message", "逾期任务占比" + overdueRate + "%"));
+                }
+                if (highPriorityCount > totalTasks * 0.3) {
+                    risks.add(Map.of("type", "priority", "severity", "medium", "message", "高优先级任务过多"));
+                }
+                if (inProgressCount > totalTasks * 0.5) {
+                    risks.add(Map.of("type", "wip", "severity", "low", "message", "进行中任务过多，可能存在瓶颈"));
+                }
+
+                return Map.of(
+                        "project_id", projectId,
+                        "health_score", healthScore,
+                        "total_tasks", totalTasks,
+                        "todo_count", todoCount,
+                        "in_progress_count", inProgressCount,
+                        "done_count", doneCount,
+                        "overdue_count", overdueCount,
+                        "completion_rate", completionRate,
+                        "risks", risks
+                );
+            }
 
             case "batch_update_tasks":
                 return Map.of("message", "批量操作需要用户确认");

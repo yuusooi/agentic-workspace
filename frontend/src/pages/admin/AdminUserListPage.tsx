@@ -56,10 +56,11 @@ export default function AdminUserListPage() {
     }
   };
 
-  const handleCanCreateToggle = async (userId: string, canCreate: boolean) => {
+  const handleCanCreateToggle = async (userId: string, checked: boolean) => {
     try {
-      await adminApi.updateAdminUserCanCreateProject(userId, canCreate);
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, canCreateProject: canCreate } : u)));
+      const newValue = checked ? 1 : 0;
+      await adminApi.updateAdminUserCanCreateProject(userId, checked);
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, canCreateProject: newValue } : u)));
       message.success('已更新');
     } catch {
       message.error('更新失败');
@@ -109,10 +110,10 @@ export default function AdminUserListPage() {
       dataIndex: 'canCreateProject',
       key: 'canCreateProject',
       width: 90,
-      render: (can: boolean, record: AdminUser) => (
+      render: (can: number, record: AdminUser) => (
         <Switch
           size="small"
-          checked={can}
+          checked={can === 1}
           onChange={(v) => handleCanCreateToggle(record.id, v)}
         />
       ),
@@ -133,7 +134,7 @@ export default function AdminUserListPage() {
   ];
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+    <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, margin: 0, marginBottom: 20, color: 'rgba(0,0,0,.95)' }}>
           用户管理

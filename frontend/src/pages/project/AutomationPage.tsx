@@ -156,7 +156,7 @@ export default function AutomationPage() {
   ];
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+    <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(`/projects/${projectId}`)} />

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Button, Input, Avatar, Spin, Select, Tag } from 'antd';
-import { SendOutlined, RobotOutlined, LoadingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Button, Input, Avatar, Spin, Select } from 'antd';
+import { SendOutlined, RobotOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { useProjectStore } from '@/stores/project-store';
 import * as projectApi from '@/lib/project-api';
@@ -22,21 +22,6 @@ interface ProjectOption {
   id: string;
   name: string;
 }
-
-const TOOL_LABELS: Record<string, string> = {
-  search_tasks: '搜索任务',
-  update_task: '更新任务',
-  update_task_status: '更新状态',
-  set_priority: '设置优先级',
-  assign_task: '分配负责人',
-  create_task: '创建任务',
-  batch_update_tasks: '批量更新',
-  suggest_tags: '推荐标签',
-  estimate_effort: '估算工时',
-  recommend_assignee: '推荐负责人',
-  generate_summary: '生成摘要',
-  analyze_project_health: '分析健康度',
-};
 
 export default function AIChatPanel() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -283,7 +268,7 @@ export default function AIChatPanel() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+      <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
         {messages.length === 0 ? (
           <div style={{
             display: 'flex',
@@ -355,44 +340,28 @@ export default function AIChatPanel() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {messages.map((msg) => (
+            {messages.filter((msg) => msg.role !== 'tool').map((msg) => (
               <div key={msg.id} style={{ display: 'flex', gap: 12 }}>
                 <Avatar
                   size={32}
                   style={{
-                    backgroundColor: msg.role === 'user' ? '#31302e' : msg.role === 'tool' ? '#52c41a' : '#0075de',
+                    backgroundColor: msg.role === 'user' ? '#31302e' : '#0075de',
                     fontSize: 12,
                     fontWeight: 600,
                     flexShrink: 0,
                   }}
                 >
-                  {msg.role === 'user' ? user?.nickname?.[0] || '?' : msg.role === 'tool' ? '⚡' : 'AI'}
+                  {msg.role === 'user' ? user?.nickname?.[0] || '?' : 'AI'}
                 </Avatar>
                 <div style={{ maxWidth: '75%' }}>
                   <div style={{
                     fontSize: 12,
                     fontWeight: 500,
-                    color: msg.role === 'user' ? 'rgba(0,0,0,.95)' : msg.role === 'tool' ? '#52c41a' : '#0075de',
+                    color: msg.role === 'user' ? 'rgba(0,0,0,.95)' : '#0075de',
                     marginBottom: 4,
                   }}>
-                    {msg.role === 'user' ? user?.nickname : msg.role === 'tool' ? '工具调用' : 'AI 助手'}
+                    {msg.role === 'user' ? user?.nickname : 'AI 助手'}
                   </div>
-                  {msg.role === 'tool' && msg.toolCall ? (
-                    <div style={{
-                      background: '#f6ffed',
-                      border: '1px solid #b7eb8f',
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      fontSize: 13,
-                    }}>
-                      <Tag color="green" style={{ marginRight: 4 }}>
-                        <ThunderboltOutlined /> {TOOL_LABELS[msg.toolCall.tool] || msg.toolCall.tool}
-                      </Tag>
-                      <span style={{ color: '#595959' }}>
-                        {formatToolParams(msg.toolCall.tool, msg.toolCall.params)}
-                      </span>
-                    </div>
-                  ) : (
                     <div>
                       <div style={{
                         background: msg.role === 'user' ? '#0075de' : '#f6f5f4',
@@ -431,7 +400,6 @@ export default function AIChatPanel() {
                         </div>
                       )}
                     </div>
-                  )}
                 </div>
               </div>
             ))}
@@ -489,26 +457,4 @@ export default function AIChatPanel() {
       </div>
     </div>
   );
-}
-
-function formatToolParams(tool: string, params: any): string {
-  if (!params) return '';
-  switch (tool) {
-    case 'set_priority':
-      return `任务 #${params.task_id} → 优先级: ${params.priority}`;
-    case 'update_task_status':
-      return `任务 #${params.task_id} → 状态: ${params.status}`;
-    case 'update_task':
-      return `任务 #${params.task_id} → ${params.field || ''}: ${params.value || ''}`;
-    case 'assign_task':
-      return `任务 #${params.task_id} → 分配给用户 #${params.user_id}`;
-    case 'create_task':
-      return `新建任务: ${params.title}`;
-    case 'search_tasks':
-      return `搜索项目 #${params.project_id} 的任务`;
-    case 'diff_preview':
-      return '变更预览';
-    default:
-      return JSON.stringify(params);
-  }
 }

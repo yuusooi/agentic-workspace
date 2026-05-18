@@ -19,12 +19,12 @@ export default function UserSettingsPage() {
   const [uploading, setUploading] = useState(false);
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [preferences, setPreferences] = useState<userApi.UserPreferences>({
-    emailNotification: true as unknown as number,
-    deadlineReminder: true as unknown as number,
-    mentionNotify: true as unknown as number,
-    statusChangeNotify: true as unknown as number,
-    overdueWarning: true as unknown as number,
-    memberChangeNotify: true as unknown as number,
+    emailNotification: 1,
+    deadlineReminder: 1,
+    mentionNotify: 1,
+    statusChangeNotify: 1,
+    overdueWarning: 1,
+    memberChangeNotify: 1,
   });
 
   useEffect(() => {
@@ -88,11 +88,12 @@ export default function UserSettingsPage() {
     return false;
   };
 
-  const handlePreferenceChange = async (key: keyof userApi.UserPreferences, value: number) => {
-    const newPrefs = { ...preferences, [key]: value };
+  const handlePreferenceChange = async (key: keyof userApi.UserPreferences, value: boolean) => {
+    const numValue = value ? 1 : 0;
+    const newPrefs = { ...preferences, [key]: numValue };
     setPreferences(newPrefs);
     try {
-      await userApi.updatePreferences({ [key]: value });
+      await userApi.updatePreferences({ [key]: numValue });
       message.success('偏好已更新');
     } catch {
       setPreferences(preferences);
@@ -109,7 +110,7 @@ export default function UserSettingsPage() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '32px 32px' }}>
+    <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '32px 32px' }}>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
         <h1 style={{
           fontSize: 22,
@@ -222,7 +223,7 @@ export default function UserSettingsPage() {
               </div>
               <Switch
                 checked={!!preferences.emailNotification}
-                onChange={(v) => handlePreferenceChange('emailNotification', v as unknown as number)}
+                onChange={(v) => handlePreferenceChange('emailNotification', v)}
               />
             </div>
 
@@ -239,7 +240,7 @@ export default function UserSettingsPage() {
               </div>
               <Switch
                 checked={!!preferences.deadlineReminder}
-                onChange={(v) => handlePreferenceChange('deadlineReminder', v as unknown as number)}
+                onChange={(v) => handlePreferenceChange('deadlineReminder', v)}
               />
             </div>
 
@@ -256,7 +257,7 @@ export default function UserSettingsPage() {
               </div>
               <Switch
                 checked={!!preferences.mentionNotify}
-                onChange={(v) => handlePreferenceChange('mentionNotify', v as unknown as number)}
+                onChange={(v) => handlePreferenceChange('mentionNotify', v)}
               />
             </div>
           </div>

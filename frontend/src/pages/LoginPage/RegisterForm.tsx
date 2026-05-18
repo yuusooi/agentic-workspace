@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Alert } from 'antd';
+import { Form, Input, Button, Alert, message } from 'antd';
 import {
   UserOutlined,
   MailOutlined,
@@ -10,6 +10,7 @@ import {
 import apiClient from '@/lib/api-client';
 
 interface RegisterFormValues {
+  nickname: string;
   username: string;
   email: string;
   code: string;
@@ -69,12 +70,14 @@ export default function RegisterForm() {
     setLoading(true);
     try {
       await apiClient.post('/auth/register', {
+        nickname: values.nickname,
         username: values.username,
         email: values.email,
         code: values.code,
         password: values.password,
         confirmPassword: values.confirmPassword,
       });
+      message.success('注册成功！请登录');
       navigate('/login', { replace: true, state: { registered: true } });
     } catch (err: unknown) {
       const errData = (err as { response?: { data?: { message?: string } } })?.response?.data;
@@ -97,15 +100,25 @@ export default function RegisterForm() {
       )}
       <Form form={form} onFinish={handleSubmit} layout="vertical" requiredMark={false}>
         <Form.Item
+          name="nickname"
+          label="昵称"
+          rules={[
+            { required: true, message: '请输入昵称' },
+            { max: 50, message: '昵称最长 50 个字符' },
+          ]}
+        >
+          <Input
+            prefix={<UserOutlined />}
+            placeholder="输入昵称"
+            size="large"
+          />
+        </Form.Item>
+        <Form.Item
           name="username"
           label="用户名"
           rules={[
             { required: true, message: '请输入用户名' },
-            { min: 3, max: 20, message: '用户名长度为 3 ~ 20 个字符' },
-            {
-              pattern: /^[a-zA-Z][a-zA-Z0-9_-]*$/,
-              message: '必须以字母开头，只能包含字母、数字、下划线、连字符',
-            },
+            { min: 2, max: 50, message: '用户名长度为 2 ~ 50 个字符' },
           ]}
         >
           <Input

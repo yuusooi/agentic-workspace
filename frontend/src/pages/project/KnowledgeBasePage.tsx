@@ -4,7 +4,7 @@ import {
   Card, Button, Table, Tag, Empty, Spin, message, Modal, Form, Input, Upload, Drawer, InputNumber, Collapse,
 } from 'antd';
 import {
-  ArrowLeftOutlined, PlusOutlined, DeleteOutlined, FileOutlined, SearchOutlined, UploadOutlined,
+  ArrowLeftOutlined, PlusOutlined, DeleteOutlined, FileOutlined, SearchOutlined, UploadOutlined, EyeOutlined,
 } from '@ant-design/icons';
 import * as kbApi from '@/lib/knowledge-api';
 
@@ -26,9 +26,12 @@ export default function KnowledgeBasePage() {
   const [docLoading, setDocLoading] = useState(false);
   const [qaOpen, setQaOpen] = useState(false);
   const [qaQuestion, setQaQuestion] = useState('');
-  const [qaAnswer, setQaAnswer] = useState('');
-  const [qaReferences, setQaReferences] = useState<{ document: string; snippet: string }[]>([]);
+  const [qaHistory, setQaHistory] = useState<{ question: string; answer: string; references: { document: string; snippet: string }[] }[]>([]);
   const [qaStreaming, setQaStreaming] = useState(false);
+  const [viewDocOpen, setViewDocOpen] = useState(false);
+  const [viewDoc, setViewDoc] = useState<kbApi.KnowledgeDocument | null>(null);
+  const [viewChunks, setViewChunks] = useState<kbApi.DocumentChunk[]>([]);
+  const [viewLoading, setViewLoading] = useState(false);
   const [form] = Form.useForm();
 
   const loadKBs = useCallback(async () => {
@@ -107,30 +110,52 @@ export default function KnowledgeBasePage() {
     }
   };
 
+  const handleViewDoc = async (doc: kbApi.KnowledgeDocument) => {
+    setViewDoc(doc);
+    setViewDocOpen(true);
+    setViewLoading(true);
+    try {
+      const chunks = await kbApi.getDocumentChunks(doc.id);
+      setViewChunks(chunks);
+    } catch {
+      message.error('加载文档内容失败');
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
   const handleAsk = async () => {
     if (!selectedKb || !qaQuestion.trim()) return;
+    const currentQuestion = qaQuestion.trim();
+    setQaQuestion('');
     setQaStreaming(true);
-    setQaAnswer('');
-    setQaReferences([]);
+    let currentAnswer = '';
+    let currentRefs: { document: string; snippet: string }[] = [];
+    
+    const history: kbApi.ChatMessage[] = qaHistory.map(item => [
+      { role: 'user' as const, content: item.question },
+      { role: 'assistant' as const, content: item.answer },
+    ]).flat();
+    
     try {
-      await kbApi.askKnowledgeBase(selectedKb.id, qaQuestion.trim(), (event) => {
-        if (event.type === 'answer') {
-          setQaAnswer((prev) => prev + (event.content as string));
+      await kbApi.askKnowledgeBase(selectedKb.id, currentQuestion, (event) => {
+        if (event.type === 'message') {
+          currentAnswer += event.content as string;
         }
         if (event.type === 'references') {
-          const refs = (event.references || []) as { document: string; snippet: string }[];
-          setQaReferences(refs);
+          currentRefs = (event.references || []) as { document: string; snippet: string }[];
         }
-      });
-    } catch {
-      setQaAnswer('问答失败，请稍后重试');
+      }, undefined, history);
+      setQaHistory((prev) => [...prev, { question: currentQuestion, answer: currentAnswer, references: currentRefs }]);
+    } catch (error) {
+      setQaHistory((prev) => [...prev, { question: currentQuestion, answer: '问答失败: ' + (error as Error).message, references: [] }]);
     } finally {
       setQaStreaming(false);
     }
   };
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+    <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(`/projects/${projectId}`)} />
@@ -214,9 +239,12 @@ export default function KnowledgeBasePage() {
                     render: (s: string) => { const cfg = STATUS_MAP[s] || STATUS_MAP.PENDING; return <Tag color={cfg.color} style={{ fontSize: 10 }}>{cfg.label}</Tag>; },
                   },
                   {
-                    title: '操作', width: 60,
+                    title: '操作', width: 100,
                     render: (_: unknown, record: kbApi.KnowledgeDocument) => (
-                      <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteDoc(record.id)} />
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => handleViewDoc(record)} />
+                        <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteDoc(record.id)} />
+                      </div>
                     ),
                   },
                 ]}
@@ -257,37 +285,71 @@ export default function KnowledgeBasePage() {
         </Form>
       </Modal>
 
-      <Drawer title={`知识问答 - ${selectedKb?.name || ''}`} open={qaOpen} onClose={() => { setQaOpen(false); setQaAnswer(''); setQaReferences([]); }} width={500}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
+      <Drawer 
+        title={`知识问答 - ${selectedKb?.name || ''}`} 
+        open={qaOpen} 
+        onClose={() => { setQaOpen(false); setQaHistory([]); }} 
+        width={600}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ flex: 1, overflowY: 'auto', marginBottom: 12 }}>
+            {qaHistory.length === 0 ? (
+              <Empty description="开始提问吧" style={{ marginTop: 40 }} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {qaHistory.map((item, idx) => (
+                  <div key={idx}>
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 12, color: '#0075de', marginBottom: 4 }}>问：{item.question}</div>
+                      <div style={{ padding: 12, background: '#f6f5f4', borderRadius: 8, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                        {item.answer}
+                      </div>
+                    </div>
+                    {item.references.length > 0 && (
+                      <div style={{ marginLeft: 12, marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: '#a39e98', marginBottom: 4 }}>参考: {item.references.map(r => r.document).join('、')}</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8, borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
             <Input
               value={qaQuestion}
               onChange={(e) => setQaQuestion(e.target.value)}
               placeholder="输入问题..."
               onPressEnter={handleAsk}
+              disabled={qaStreaming}
             />
             <Button type="primary" onClick={handleAsk} loading={qaStreaming}>提问</Button>
           </div>
-          {qaAnswer && (
-            <div style={{ padding: 12, background: '#f6f5f4', borderRadius: 8, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-              {qaAnswer}
-            </div>
-          )}
-          {qaReferences.length > 0 && (
-            <div>
-              <div style={{ fontSize: 12, color: '#a39e98', marginBottom: 6 }}>参考来源</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {qaReferences.map((ref, i) => (
-                  <div key={i} style={{ padding: 8, background: 'rgba(0,117,222,.04)', borderRadius: 6, fontSize: 12 }}>
-                    <div style={{ fontWeight: 500, color: '#0075de', marginBottom: 2 }}>{ref.document}</div>
-                    <div style={{ color: '#615d59', fontSize: 11 }}>{ref.snippet}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </Drawer>
+
+      <Modal
+        title={`查看文档 - ${viewDoc?.file_name || ''}`}
+        open={viewDocOpen}
+        onCancel={() => { setViewDocOpen(false); setViewDoc(null); setViewChunks([]); }}
+        footer={null}
+        width={800}
+      >
+        {viewLoading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+        ) : viewChunks.length === 0 ? (
+          <Empty description="文档暂无内容" />
+        ) : (
+          <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+            {viewChunks.map((chunk, index) => (
+              <div key={chunk.id} style={{ marginBottom: 16, padding: 12, background: '#f6f5f4', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: '#a39e98', marginBottom: 4 }}>分块 {index + 1}</div>
+                <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{chunk.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

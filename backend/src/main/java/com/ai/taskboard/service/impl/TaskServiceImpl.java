@@ -46,6 +46,7 @@ public class TaskServiceImpl implements TaskService {
     private final CommentMapper commentMapper;
     private final TaskStatusHistoryMapper taskStatusHistoryMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final ProjectMapper projectMapper;
     private final UserMapper userMapper;
     private final BoardColumnMapper boardColumnMapper;
     private final NotificationService notificationService;
@@ -57,6 +58,8 @@ public class TaskServiceImpl implements TaskService {
     private void checkProjectMember(Long userId, Long projectId) {
         String role = UserContext.getUserRole();
         if (Constants.ROLE_ADMIN.equals(role)) return;
+        Project project = projectMapper.selectById(projectId);
+        if (project != null && userId.equals(project.getOwnerId())) return;
         ProjectMember member = projectMemberMapper.selectOne(
                 new LambdaQueryWrapper<ProjectMember>()
                         .eq(ProjectMember::getProjectId, projectId)
@@ -69,6 +72,8 @@ public class TaskServiceImpl implements TaskService {
     private boolean isProjectOwnerOrAdmin(Long userId, Long projectId) {
         String role = UserContext.getUserRole();
         if (Constants.ROLE_ADMIN.equals(role)) return true;
+        Project project = projectMapper.selectById(projectId);
+        if (project != null && userId.equals(project.getOwnerId())) return true;
         ProjectMember member = projectMemberMapper.selectOne(
                 new LambdaQueryWrapper<ProjectMember>()
                         .eq(ProjectMember::getProjectId, projectId)
@@ -108,6 +113,19 @@ public class TaskServiceImpl implements TaskService {
             return t != null ? TagInfo.builder().id(t.getId()).name(t.getName()).color(t.getColor()).build() : null;
         }).filter(ti -> ti != null).toList();
 
+        List<Attachment> attachments = attachmentMapper.selectList(
+                new LambdaQueryWrapper<Attachment>().eq(Attachment::getTaskId, task.getId()));
+        List<AttachmentVO> attachmentVOs = attachments.stream().map(att -> AttachmentVO.builder()
+                .id(att.getId())
+                .taskId(att.getTaskId())
+                .fileName(att.getFileName())
+                .filePath(att.getFilePath())
+                .fileSize(att.getFileSize())
+                .fileType(att.getFileType())
+                .uploaderId(att.getUploaderId())
+                .createdAt(att.getCreatedAt())
+                .build()).toList();
+
         return TaskVO.builder()
                 .id(task.getId())
                 .projectId(task.getProjectId())
@@ -129,6 +147,7 @@ public class TaskServiceImpl implements TaskService {
                 .updatedAt(task.getUpdatedAt())
                 .assignees(assigneeInfos)
                 .tags(tagInfos)
+                .attachments(attachmentVOs)
                 .build();
     }
 

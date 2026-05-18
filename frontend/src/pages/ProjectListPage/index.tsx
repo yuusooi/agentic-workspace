@@ -51,7 +51,7 @@ export default function ProjectListPage() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+      <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
         {/* Title bar */}
         <div style={{
           display: 'flex',

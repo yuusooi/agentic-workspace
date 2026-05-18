@@ -131,7 +131,7 @@ export default function AdminProjectListPage() {
   ];
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+    <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3, margin: 0, marginBottom: 20, color: 'rgba(0,0,0,.95)' }}>
           全部项目

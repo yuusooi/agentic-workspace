@@ -12,6 +12,7 @@ public class Document extends BaseEntity {
     private Long knowledgeBaseId;
     private String fileName;
     private String fileUrl;
+    private Long fileSize;
     private Integer chunkCount;
     private String status;
 }

@@ -30,6 +30,7 @@ public class TaskVO {
     private LocalDateTime updatedAt;
     private List<AssigneeInfo> assignees;
     private List<TagInfo> tags;
+    private List<AttachmentVO> attachments;
 
     @Data
     @Builder

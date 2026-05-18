@@ -44,7 +44,7 @@ export default function AIChatHistory() {
 
   return (
     <>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+      <div className="app-layout-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, marginBottom: 20, color: 'rgba(0,0,0,.95)' }}>
             <HistoryOutlined style={{ marginRight: 8 }} />

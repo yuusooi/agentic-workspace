@@ -1,0 +1,253 @@
+Spark SQL
+Spark Streaming/Structured Streaming
+Spark GraphX
+Spark MLLib/Spark ML
+
+DataFrame（带有Schema的RDD）
+DStream（按时间分片，每个分片的数据为一个RDD）
+
+https://docs.oracle.com/javase/11/docs/api/ 
+https://scala-lang.org/files/archive/api/2.12.x/
+编程语言基础：数据类型、输入输出、控制结构、数据结构、面向对象、函数式编程
+
+在Shell命令提示符界面中输入“scala”命令后，会进入scala命令行提示符状态。
+注意：Int  （类型首字母都要大写），RichInt是Int的增强类。Int类（+）和RichInt类（toFloat）
+对于无参数的方法，定义时可以省略括号，如果定义时省略了括号，那么调用也不能带括号；如果无参数方法在定义时带有括号，则调用时可以带括号也可以不带括号。
+在调用有参方法时，方法名后面的圆括号()可以用大括号{}来代替。如果方法只有一个参数，可以采用中缀调用方法“调用者 方法名 参数”
+scala 源码默认导入Predef对象，该对象主要用于类型的隐式变换和Console I/O，如将Int 转为RichInt，对Int 方法进行了增强；提供println等方法。
+
+import io.StdIn._
+Scala使用通配符下划线_引入类或对象的所有成员
+var i = readInt
+
+import java.io.PrintWriter
+val outputFile = new PrintWriter("/home/hadoop/test.txt")
+outputFile.println("Hello World")
+outputFile.close()
+
+伴生对象
+import scala.io.Source
+val inputFile = Source.fromFile("/home/hadoop/test.txt")
+val lines = inputFile.getLines()
+for(line <- lines) println(line)
+inputFile.close()
+
+
+for(i <- 1 to 5) println(i)
+其中，“变量<-表达式”被称为“生成器（generator）”，该处的变量不需要关键字val和var进行声明，其类型为后面的表达式对应的容器中的元素类型，每一次枚举，变量就被容器中的一个新元素所初始化。注：不可在语句块中修改该变量，因为默认为val类型
+
+for(i <- 1 to 5 if i%2==0) println(i)
+守卫(guard)的表达式：过滤出一些满足条件的结果。
+
+for(i <- 1 to 5; j <- 1 to 3) println(i*j)
+
+val r = for (i <- Array(1,2,3,4,5) if i%2==0) yield { println(i); i}
+for推导式：在循环体前加上yield关键字.yield后的语句块的最后一个表达式的值作为每次循环的返回值.
+
+intValueArr(0)=12 等价于：intValueArr.update(0,12)
+val intValueArr = new Array[Int](3)
+intValueArr(0)=12
+intValueArr(1)=45
+intValueArr(2)=33
+
+myStrArr(i) 等价于：myStrArr.apply(i)
+val myStrArr = new Array[String](3)
+myStrArr(0)="BigData"
+myStrArr(1)="Hadoop"
+myStrArr(2)="Spark"
+for(i <- 0 to 2) println(myStrArr(i))
+
+Array(12,45,33)  等价于：Array.apply(12,45,33)
+val intValueArr = Array(12,45,33)
+val myStrArr = Array("BigData","Hadoop","Spark")
+
+关系数据库表中的一行可以认为是一个元组。Scala库中包含TupleN类,如Tuple2, 用于组建N元素组。
+(“BigData”,2015,45.0) //元组字面量
+如果需要在方法里返回多个不同类型的对象，Scala可以简单地返回一个元组。
+val tuple = ("BigData",2015,45.0)
+println(tuple._1)
+println(tuple._2)
+println(tuple._3)
+
+1 to 5
+1 to 10 by 2
+1 until 5
+
+val university = Map("XMU" -> "Xiamen University", "THU" -> "Tsinghua University","PKU"->"Peking University")
+其中，操作符”->”是定义二元组的简写方式，它会返回一个包含调用者和传入参数的二元组
+等效于：
+val university = Map(("XMU","Xiamen University"), ("THU","Tsinghua University"),("PKU","Peking University"))
+println(university("XMU"))
+
+
+
+class Counter {
+  var value = 0
+  def increment(step:Int):Unit = { value += step}
+  def current():Int = {value}
+}
+object Test {
+  def main(args:Array[String]){
+    val myCounter = new Counter
+    myCounter.value = 5
+    myCounter.increment(3)
+    println(myCounter.current)
+  }
+}
+
+
+object Person {
+  private var lastId = 0  //一个人的身份编号
+  def newPersonId() = {
+    lastId +=1
+    lastId
+  }
+}
+object Test {
+  def main(args:Array[String]){
+    println(Person.newPersonId)
+  }
+}
+
+
+class Person(val name:String){
+    private val id = Person.newPersonId() //调用了伴生对象中的方法
+    def info() {
+        printf("The id of %s is %d.\n",name,id)
+    }
+}
+object Person {
+    private var lastId = 0  //一个人的身份编号
+    def newPersonId() = {
+        lastId +=1
+        lastId
+    }
+}
+object Test {
+    def main(args: Array[String]) {
+        val person1 = new Person("Lilei")
+        val person2 = new Person("Hanmei")
+        person1.info()
+        person2.info()
+    }
+}
+
+
+class Car(name: String) {
+  def info() {
+    println("Car name is "+ name)
+  }
+  def apply(param: String){
+    println("apply method called: " + param)
+  }
+}
+object Car {
+  def apply(name: String) = new Car(name) //调用伴生类Car的构造方法
+}
+object MyTestApply{
+  def main (args: Array[String]) {
+    val mycar = Car("BMW") //调用伴生对象中的apply方法
+    mycar.info() //输出结果为“Car name is BMW”
+    mycar("hello") //输出结果为“apply method called:hello”
+  }
+}
+
+
+
+为什么要设计apply方法？
+val add=(x:Int,y:Int)=>x+y
+add(4,5)
+add.apply(4,5)
+
+case class Book(val name:String,val price:Double)
+val books=Map("hadoop"->Book("Hadoop",35.5),"spark"->Book("Spark",55.5),"hbase"->Book("Hbase",26.0))
+books.get("hadoop")
+books.get("hive")
+books.get("hadoop").get 
+books.get("hive").get
+books.get("hive").getOrElse(Book("Unknown name",0))
+
+特质trait：
+trait Flyable {
+       var maxFlyHeight:Int  //抽象字段
+       def fly() //抽象方法
+       def breathe(){ //具体的方法
+             println("I can breathe")
+       }
+ }
+trait HasLegs {
+       val legs:Int   //抽象字段
+       def move(){printf("I can walk with %d legs",legs)}
+}
+class Animal(val category:String){
+       def info(){println("This is a "+category)}
+}
+class Bird(flyHeight:Int) extends Animal("Bird") with Flyable with HasLegs{
+         var maxFlyHeight:Int = flyHeight //重载特质的抽象字段
+         val legs=2 //重载特质的抽象字段
+         def fly(){
+               printf("I can fly at the height of %d",maxFlyHeight)
+         }//重载特质的抽象方法
+}
+object test {
+  def main(args:Array[String]){
+    val bird = new Bird(108)
+    bird.fly()
+  }
+}
+
+
+函数式编程基础：
+def counter(value: Int): Int = { value + 1}
+val f = counter _
+//以上是方法转函数
+
+val counter: Int => Int = value => value + 1  
+val counter = (value: Int) => value + 1
+val counter = (_: Int) + 1
+
+val add: (Int, Int)=>Int = (a,b)=>a+b   
+val add= (a: Int, b:Int) => a+b
+val add = (_:Int) + (_:Int) 
+
+针对容器的操作：
+val list = List(1, 2, 3)
+list.foreach(i=>println(i))
+list.foreach(println(_))
+list.foreach(println)
+
+val university = Map("XMU" ->"Xiamen University", "THU" ->"Tsinghua University","PKU"->"Peking University","XMUT"->"Xiamen University of Technology")
+university foreach{kv => println(kv._1+":"+kv._2)}
+university foreach(kv => println(kv._1+":"+kv._2))
+university.foreach(kv => println(kv._1+":"+kv._2))
+
+
+val books =List("Hadoop","Hive","HDFS")
+books.map(s => s.toUpperCase)
+books.map(s => s.length)
+
+books flatMap (s => s.toList)
+
+scala>"Hadoop".toList
+Scala的String可以隐式的转化为StringOps，将一个字符串视为一个元素类型为Char的容器，因此也可以调用toList方法，返回一个由所有字符组成的List[Char]
+
+
+val university = Map("XMU" ->"Xiamen University", "THU" ->"Tsinghua University","PKU"->"Peking University","XMUT"->"Xiamen University of Technology")
+val xmus = university filter {kv => kv._2 contains "Xiamen"}
+val l=List(1,2,3,4,5,6) filter {_%2==0}
+
+
+val list =List(1,2,3,4,5)
+list.reduce(_ + _)
+list.reduce(_ * _)
+
+
+val list = List(1,2,3,4,5)
+list reduceLeft {_-_}
+list reduceRight {_-_}
+
+val list =List(1,2,3,4,5)
+list.fold(10)(_*_)
+(list fold 10)(_*_) 
+(list foldLeft 10)(_-_)
+(list foldRight 10)(_-_) 

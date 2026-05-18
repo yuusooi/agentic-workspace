@@ -46,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set(key, code, 5, TimeUnit.MINUTES);
 
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("3117965072@qq.com");
         message.setTo(request.getEmail());
         message.setSubject("AI任务看板 - 验证码");
         message.setText("您的验证码为：" + code + "，5分钟内有效。");
@@ -78,8 +79,8 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("密码必须8-128位，包含大小写字母和数字");
         }
 
-        if (!request.getUsername().matches("^[a-zA-Z][a-zA-Z0-9_-]{2,19}$")) {
-            throw new BusinessException("用户名必须3-20位，字母开头，仅允许字母、数字、下划线、连字符");
+        if (request.getUsername().length() < 2 || request.getUsername().length() > 50) {
+            throw new BusinessException("用户名长度必须为2-50位");
         }
 
         Long count = userMapper.selectCount(

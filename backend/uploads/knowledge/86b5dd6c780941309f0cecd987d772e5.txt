@@ -1,0 +1,211 @@
+连接使用redis----密码123456
+docker start redis
+docker exec -it redis redis-cli -a 123456
+1、打开 MongoDB Shell 
+mongosh
+2、MongoDB地址
+D:\mongodb-win32-x86_64-windows-8.2.6
+集群打开
+MongoDB分片集群日常操作命令速查表
+一、启动集群（按顺序）
+1. 启动配置服务器（3个窗口）
+powershell
+# 窗口1 - 配置节点1
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --configsvr --replSet configReplSet --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\configdb\1 --port 27019
+
+# 窗口2 - 配置节点2
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --configsvr --replSet configReplSet --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\configdb\2 --port 27020
+
+# 窗口3 - 配置节点3
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --configsvr --replSet configReplSet --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\configdb\3 --port 27021
+2. 启动分片服务器（9个窗口）
+shard1 (端口27001-27003)
+
+powershell
+# 窗口4 - shard1节点1
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard1 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard1\1 --port 27001
+
+# 窗口5 - shard1节点2
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard1 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard1\2 --port 27002
+
+# 窗口6 - shard1节点3
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard1 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard1\3 --port 27003
+shard2 (端口27004-27006)
+
+powershell
+# 窗口7 - shard2节点1
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard2 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard2\1 --port 27004
+
+# 窗口8 - shard2节点2
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard2 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard2\2 --port 27005
+
+# 窗口9 - shard2节点3
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard2 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard2\3 --port 27006
+shard3 (端口27007-27009)
+
+powershell
+# 窗口10 - shard3节点1
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard3 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard3\1 --port 27007
+
+# 窗口11 - shard3节点2
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard3 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard3\2 --port 27008
+
+# 窗口12 - shard3节点3
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongod.exe --shardsvr --replSet shard3 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard3\3 --port 27009
+3. 启动路由服务器（3个窗口）
+powershell
+# 窗口13 - mongos1
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongos.exe --configdb configReplSet/localhost:27019,localhost:27020,localhost:27021 --port 27016
+
+# 窗口14 - mongos2
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongos.exe --configdb configReplSet/localhost:27019,localhost:27020,localhost:27021 --port 27017
+
+# 窗口15 - mongos3
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongos.exe --configdb configReplSet/localhost:27019,localhost:27020,localhost:27021 --port 27018
+二、关闭集群
+方法1：逐个关闭窗口（推荐）
+按顺序关闭：
+
+先关 mongos 窗口 (13-15)
+
+再关 分片窗口 (4-12)
+
+最后关 配置服务器窗口 (1-3)
+
+方法2：一条命令关闭所有
+powershell
+# 在 PowerShell 中执行
+Get-Process mongod, mongos | Stop-Process -Force
+三、连接集群
+连接 mongos（应用入口）
+powershell
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+.\mongosh.exe --port 27016
+连接具体分片（维护用）
+powershell
+# 连接 shard1
+.\mongosh.exe --port 27001
+
+# 连接 shard2
+.\mongosh.exe --port 27004
+
+# 连接 shard3
+.\mongosh.exe --port 27007
+
+# 连接配置服务器
+.\mongosh.exe --port 27019
+四、常用维护命令
+在 mongos 中执行
+查看集群状态
+
+javascript
+// 查看所有分片
+use config
+db.shards.find()
+
+// 查看数据库
+db.databases.find()
+
+// 查看集合分片情况
+db.collections.find()
+查看数据分布
+
+javascript
+// 切换到你的数据库
+use test
+
+// 查看集合统计
+db.users.stats()
+
+// 查看数据总量
+db.users.countDocuments()
+分片操作
+
+javascript
+// 启用数据库分片
+sh.enableSharding("数据库名")
+
+// 创建分片集合
+sh.shardCollection("数据库名.集合名", { "分片键": "hashed" })
+
+// 查看分片状态
+db.printShardingStatus()
+五、配置文件修改
+如果将来需要修改配置（如增加内存、修改端口），可以在启动命令中添加参数：
+
+powershell
+# 常用参数
+--bind_ip 0.0.0.0        # 允许远程连接
+--maxConns 1000          # 最大连接数
+--wiredTigerCacheSizeGB 1 # 限制内存使用（单位GB）
+
+# 示例：带参数的启动命令
+.\mongod.exe --shardsvr --replSet shard1 --dbpath D:\mongodb-win32-x86_64-windows-8.2.6\data\shard1\1 --port 27001 --bind_ip 0.0.0.0 --wiredTigerCacheSizeGB 1
+打开和使用 MongoDB 的几种方式
+1. 打开普通的 MongoDB Shell（连接任意节点）
+powershell
+# 进入 bin 目录
+cd D:\mongodb-win32-x86_64-windows-8.2.6\bin
+
+# 打开 mongosh（默认连接本地27017，但你的集群没有这个端口）
+.\mongosh.exe
+
+# 或者指定端口连接（推荐）
+.\mongosh.exe --port 27016  # 连接 mongos1
+2. 根据需求连接不同组件
+连接路由服务器（日常使用）
+
+powershell
+.\mongosh.exe --port 27016  # 连接 mongos1
+.\mongosh.exe --port 27017  # 连接 mongos2
+.\mongosh.exe --port 27018  # 连接 mongos3
+连接具体分片（维护用）
+
+powershell
+.\mongosh.exe --port 27001  # 连接 shard1 主节点
+.\mongosh.exe --port 27004  # 连接 shard2 主节点
+.\mongosh.exe --port 27007  # 连接 shard3 主节点
+连接配置服务器
+
+powershell
+.\mongosh.exe --port 27019  # 连接配置服务器
+二、打开 MongoDB Compass（图形界面）
+1. 找到并打开 Compass
+powershell
+# 通常 Compass 在这里
+C:\Users\ly888\Downloads\mongosh-2.7.0-win32-x64\mongosh-2.7.0-win32-x64\mongodb-compass.exe
+
+# 或者搜索 "MongoDB Compass" 从开始菜单打开
+2. 在 Compass 中连接集群
+在连接字符串中输入：
+
+text
+mongodb://localhost:27016
+或者分别连接不同组件：
+
+mongodb://localhost:27016 - mongos1
+
+mongodb://localhost:27017 - mongos2
+
+mongodb://localhost:27018 - mongos3
+
+mongodb://localhost:27001 - shard1
+
+mongodb://localhost:27004 - shard2
+
+mongodb://localhost:27007 - shard3

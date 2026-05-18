@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
-import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -145,19 +144,24 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         String fileName = UUID.randomUUID().toString().replace("-", "") + ext;
 
         String docDir = uploadPath + "/knowledge";
-        FileUtil.mkdir(docDir);
-        File dest = new File(docDir, fileName);
+        File dir = new File(docDir).getAbsoluteFile();
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        File dest = new File(dir, fileName);
 
         try {
-            file.transferTo(dest);
+            file.transferTo(dest.getAbsoluteFile());
         } catch (IOException e) {
-            throw new BusinessException("文件上传失败");
+            log.error("文件上传失败, dest path: {}, error: {}", dest.getAbsolutePath(), e.getMessage(), e);
+            throw new BusinessException("文件上传失败: " + e.getMessage());
         }
 
         Document document = new Document();
         document.setKnowledgeBaseId(kbId);
         document.setFileName(originalFilename);
         document.setFileUrl("/uploads/knowledge/" + fileName);
+        document.setFileSize(file.getSize());
         document.setChunkCount(0);
         document.setStatus("PENDING");
         documentMapper.insert(document);
@@ -203,29 +207,87 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         List<Document> docs = documentMapper.selectList(
                 new LambdaQueryWrapper<Document>().eq(Document::getKnowledgeBaseId, kbId));
+        
+        if (docs.isEmpty()) {
+            try {
+                emitter.send(SseEmitter.event().name("message").data("知识库中暂无文档，请先上传文档。"));
+                emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                emitter.complete();
+            } catch (Exception ignored) {}
+            return emitter;
+        }
+        
         List<DocumentChunk> allChunks = new ArrayList<>();
         for (Document doc : docs) {
             List<DocumentChunk> chunks = documentChunkMapper.selectList(
                     new LambdaQueryWrapper<DocumentChunk>().eq(DocumentChunk::getDocumentId, doc.getId()));
             allChunks.addAll(chunks);
         }
+        
+        if (allChunks.isEmpty()) {
+            try {
+                emitter.send(SseEmitter.event().name("message").data("文档正在处理中，请稍后再试。"));
+                emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                emitter.complete();
+            } catch (Exception ignored) {}
+            return emitter;
+        }
 
         List<DocumentChunk> relevantChunks = keywordMatch(request.getQuestion(), allChunks, kb.getTopK());
+        
+        if (relevantChunks.isEmpty()) {
+            try {
+                emitter.send(SseEmitter.event().name("message").data("抱歉，在知识库中没有找到与您问题相关的内容。"));
+                emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                emitter.complete();
+            } catch (Exception ignored) {}
+            return emitter;
+        }
+        
         String context = relevantChunks.stream()
                 .map(DocumentChunk::getContent)
                 .collect(Collectors.joining("\n\n"));
 
-        String systemPrompt = "你是一个知识库助手。请根据以下知识库内容回答用户的问题。如果知识库中没有相关内容，请如实告知。\n\n知识库内容：\n" + context;
+        String systemPrompt = "你是一个专业的知识库助手。请根据以下知识库内容回答用户的问题。\n\n" +
+                "重要规则：\n" +
+                "1. 仔细理解用户的问题意图，用你自己的话进行回答\n" +
+                "2. 不要直接复制粘贴文档内容，要进行总结和提炼\n" +
+                "3. 如果知识库中没有相关内容，请如实告知用户\n" +
+                "4. 回答要简洁明了，突出重点\n" +
+                "5. 如果用户追问，要结合之前的对话上下文进行回答\n\n" +
+                "知识库内容：\n" + context;
+
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", systemPrompt));
+        
+        if (request.getHistory() != null && !request.getHistory().isEmpty()) {
+            for (AskRequest.Message msg : request.getHistory()) {
+                messages.add(Map.of("role", msg.getRole(), "content", msg.getContent()));
+            }
+        }
+        messages.add(Map.of("role", "user", "content", request.getQuestion()));
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", aiLlmConfig.getLlm().getModel());
-        requestBody.put("messages", List.of(
-                Map.of("role", "system", "content", systemPrompt),
-                Map.of("role", "user", "content", request.getQuestion())
-        ));
+        requestBody.put("messages", messages);
         requestBody.put("max_tokens", aiLlmConfig.getLlm().getMaxTokens());
         requestBody.put("temperature", aiLlmConfig.getLlm().getTemperature());
         requestBody.put("stream", true);
+
+        final List<Map<String, String>> references = new ArrayList<>();
+        for (DocumentChunk chunk : relevantChunks) {
+            Document doc = documentMapper.selectById(chunk.getDocumentId());
+            if (doc != null) {
+                String snippet = chunk.getContent();
+                if (snippet.length() > 200) {
+                    snippet = snippet.substring(0, 200) + "...";
+                }
+                references.add(Map.of(
+                    "document", doc.getFileName(),
+                    "snippet", snippet
+                ));
+            }
+        }
 
         Disposable disposable = aiWebClient.post()
                 .uri("/chat/completions")
@@ -233,26 +295,29 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 .bodyValue(requestBody)
                 .accept(MediaType.TEXT_EVENT_STREAM)
                 .retrieve()
-                .bodyToFlux(ServerSentEvent.class)
+                .bodyToFlux(String.class)
                 .subscribe(
-                        sse -> {
+                        eventData -> {
                             try {
-                                Object data = sse.data();
-                                if (data != null) {
-                                    String dataStr = data.toString();
-                                    if ("[DONE]".equals(dataStr)) {
-                                        emitter.send(SseEmitter.event().name("done").data("[DONE]"));
-                                        emitter.complete();
-                                        return;
+                                if (eventData == null || eventData.isEmpty()) {
+                                    return;
+                                }
+                                if ("[DONE]".equals(eventData)) {
+                                    if (!references.isEmpty()) {
+                                        String refsJson = objectMapper.writeValueAsString(references);
+                                        emitter.send(SseEmitter.event().name("references").data(refsJson));
                                     }
-                                    JsonNode node = objectMapper.readTree(dataStr);
-                                    JsonNode choices = node.get("choices");
-                                    if (choices != null && choices.isArray() && choices.size() > 0) {
-                                        JsonNode delta = choices.get(0).get("delta");
-                                        if (delta != null && delta.has("content") && !delta.get("content").isNull()) {
-                                            String content = delta.get("content").asText();
-                                            emitter.send(SseEmitter.event().name("message").data(content));
-                                        }
+                                    emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                                    emitter.complete();
+                                    return;
+                                }
+                                JsonNode node = objectMapper.readTree(eventData);
+                                JsonNode choices = node.get("choices");
+                                if (choices != null && choices.isArray() && choices.size() > 0) {
+                                    JsonNode delta = choices.get(0).get("delta");
+                                    if (delta != null && delta.has("content") && !delta.get("content").isNull()) {
+                                        String content = delta.get("content").asText();
+                                        emitter.send(SseEmitter.event().name("message").data(content));
                                     }
                                 }
                             } catch (Exception e) {
@@ -262,12 +327,16 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                         error -> {
                             log.error("LLM stream error", error);
                             try {
-                                emitter.send(SseEmitter.event().name("error").data("AI服务调用失败"));
+                                emitter.send(SseEmitter.event().name("error").data("AI服务调用失败: " + error.getMessage()));
                                 emitter.complete();
                             } catch (Exception ignored) {}
                         },
                         () -> {
                             try {
+                                if (!references.isEmpty()) {
+                                    String refsJson = objectMapper.writeValueAsString(references);
+                                    emitter.send(SseEmitter.event().name("references").data(refsJson));
+                                }
                                 emitter.send(SseEmitter.event().name("done").data("[DONE]"));
                                 emitter.complete();
                             } catch (Exception ignored) {}
@@ -303,6 +372,13 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private void processDocument(Document document, KnowledgeBase kb) {
         try {
             File file = new File(uploadPath + "/knowledge", document.getFileUrl().substring(document.getFileUrl().lastIndexOf("/") + 1));
+            
+            long fileSize = file.length();
+            long maxFileSize = 10 * 1024 * 1024;
+            if (fileSize > maxFileSize) {
+                throw new BusinessException("文件大小超过限制(10MB)");
+            }
+            
             String content = FileUtil.readString(file, StandardCharsets.UTF_8);
 
             int chunkSize = kb.getChunkSize() != null ? kb.getChunkSize() : 2000;
@@ -329,12 +405,15 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     private List<String> chunkText(String text, int chunkSize, int overlap) {
         List<String> chunks = new ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return chunks;
+        }
+        int step = Math.max(1, chunkSize - overlap);
         int start = 0;
         while (start < text.length()) {
             int end = Math.min(start + chunkSize, text.length());
             chunks.add(text.substring(start, end));
-            start = end - overlap;
-            if (start >= text.length()) break;
+            start += step;
         }
         return chunks;
     }
@@ -365,7 +444,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         vo.setKnowledgeBaseId(doc.getKnowledgeBaseId());
         vo.setFileName(doc.getFileName());
         vo.setFileType(extractFileType(doc.getFileName()));
-        vo.setFileSize(0L);
+        vo.setFileSize(doc.getFileSize() != null ? doc.getFileSize() : 0L);
         vo.setChunkCount(doc.getChunkCount() != null ? doc.getChunkCount() : 0);
         vo.setStatus(doc.getStatus());
         vo.setCreatedAt(doc.getCreatedAt());

@@ -3,8 +3,10 @@ package com.ai.taskboard.service.impl;
 import com.ai.taskboard.common.result.PageResult;
 import com.ai.taskboard.dto.notification.NotificationVO;
 import com.ai.taskboard.entity.Notification;
+import com.ai.taskboard.entity.User;
 import com.ai.taskboard.entity.UserPreference;
 import com.ai.taskboard.mapper.NotificationMapper;
+import com.ai.taskboard.mapper.UserMapper;
 import com.ai.taskboard.mapper.UserPreferenceMapper;
 import com.ai.taskboard.service.NotificationService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -22,6 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationMapper notificationMapper;
     private final UserPreferenceMapper userPreferenceMapper;
+    private final UserMapper userMapper;
     private final JavaMailSender mailSender;
 
     @Override
@@ -48,13 +51,17 @@ public class NotificationServiceImpl implements NotificationService {
                 default -> false;
             };
             if (shouldSend) {
-                try {
-                    SimpleMailMessage message = new SimpleMailMessage();
-                    message.setTo("user@example.com");
-                    message.setSubject(title);
-                    message.setText(content);
-                    mailSender.send(message);
-                } catch (Exception ignored) {}
+                User user = userMapper.selectById(userId);
+                if (user != null && user.getEmail() != null) {
+                    try {
+                        SimpleMailMessage message = new SimpleMailMessage();
+                        message.setFrom("3117965072@qq.com");
+                        message.setTo(user.getEmail());
+                        message.setSubject(title);
+                        message.setText(content);
+                        mailSender.send(message);
+                    } catch (Exception ignored) {}
+                }
             }
         }
     }
